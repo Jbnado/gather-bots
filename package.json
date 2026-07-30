@@ -13,7 +13,8 @@
     "start": "node --env-file-if-exists=.env --import tsx src/main.ts",
     "authorize:google": "node --env-file-if-exists=.env --import tsx src/cli/authorize-google.ts",
     "authorize:outlook": "node --env-file-if-exists=.env --import tsx src/cli/authorize-outlook.ts",
-    "checkup": "node --env-file-if-exists=.env --import tsx src/cli/checkup.ts"
+    "checkup": "node --env-file-if-exists=.env --import tsx src/cli/checkup.ts",
+    "build": "tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -37,5 +38,11 @@
     "webhooks",
     "azure-devops",
     "dashboard"
-  ]
+  ],
+  "packageManager": "pnpm@10.24.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
 }

@@ -43,6 +43,28 @@ across every state; listing them all buries the two or three that are genuinely 
 
 Anything not listed is ignored, including Closed and Removed.
 
+### Only the current sprint
+
+```
+AZDO_WORK_ITEM_TEAM=My Project/My Team
+AZDO_WORK_ITEM_CURRENT_SPRINT=true
+```
+
+The team is not optional here, and the reason is an Azure DevOps rule rather than a design
+choice: an organisation-wide query answers
+
+```
+VS402612: The macro '@CurrentIteration' is not supported without a team context.
+```
+
+Supplying the team switches the request to that team's WIQL endpoint, where `@CurrentIteration`
+resolves against that team's iteration schedule. The trade-off is coverage — the query then sees
+only that team's project, instead of every project you have access to.
+
+Setting `AZDO_WORK_ITEM_CURRENT_SPRINT=true` without a team is ignored rather than treated as an
+error, so a half-finished configuration degrades to the organisation-wide behaviour instead of
+failing every tick.
+
 ## 3. Pipelines (optional)
 
 ```

@@ -1,0 +1,44 @@
+# docker compose up -d --build
+#
+# Reads .env for its configuration. Nothing else is needed — no database, no broker, no volumes
+# beyond a few kilobytes of state.
+
+services:
+  gather-bots:
+    build: .
+    image: gather-bots:local
+    container_name: gather-bots
+    restart: unless-stopped
+
+    # env_file rather than `environment:` so secrets never appear in this file or in
+    # `docker inspect` output as literals someone might paste into a ticket.
+    env_file: .env
+
+    # Overrides whatever .env says, because the path inside the container is not the host's.
+    environment:
+      STATE_FILE: /app/state/last-sent.json
+
+    volumes:
+      - state:/app/state
+
+    # This is one HTTP poller. Capping it means a runaway loop or a memory leak stays a
+    # contained annoyance rather than something that disturbs whatever else shares the host.
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+
+    # A tick logs every POLL_INTERVAL_SECONDS. If the process is wedged the log goes quiet, and
+    # unbounded logs on a long-lived container are their own kind of outage.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  state:

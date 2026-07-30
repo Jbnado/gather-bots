@@ -31,7 +31,7 @@ const live = sources.flatMap((s) => (s.state === "on" ? [s.source] : []));
 
 // Refusing to start is friendlier than looping forever doing nothing.
 if (targets.length === 0 || live.length === 0) {
-  console.error("Nothing to do yet — run `pnpm doctor` to see what is missing.");
+  console.error("Nothing to do yet — run `pnpm checkup` to see what is missing.");
   process.exit(1);
 }
 

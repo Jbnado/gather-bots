@@ -8,7 +8,7 @@ import type { Integration } from "./registry.js";
 
 /**
  * Every integration the app knows about. Order only affects the order they appear in
- * `pnpm doctor`; anything not configured simply stays off.
+ * `pnpm checkup`; anything not configured simply stays off.
  *
  * ## Adding your own
  *

@@ -86,7 +86,7 @@ Disponíveis: `inbox`, `activity-monitor`, `availability`, `prod-health`.
 | Integração | Dá | Setup |
 |---|---|---|
 | Azure DevOps — pull requests | reviews esperando por você, seus PRs parados | [guia](docs/integrations/azure-devops.md) |
-| Azure DevOps — work items | tarefas nos estados que você escolher | [guia](docs/integrations/azure-devops.md) |
+| Azure DevOps — work items | tarefas nos estados que você escolher, opcionalmente só do sprint atual | [guia](docs/integrations/azure-devops.md) |
 | Azure DevOps — pipelines | saúde das builds, prod e develop separados | [guia](docs/integrations/azure-devops.md) |
 | Google Calendar | reuniões, convites não respondidos | [guia](docs/integrations/google-calendar.md) |
 | Outlook / Microsoft 365 | o mesmo, num tenant Microsoft | [guia](docs/integrations/outlook.md) |
@@ -129,7 +129,21 @@ ao mesmo tempo.
 
 ## Rodando continuamente
 
-**Linux** — serviço systemd de usuário, sem root:
+**Docker** — o caminho mais curto num servidor:
+
+```bash
+cp .env.example .env      # preencha
+docker compose up -d --build
+
+docker compose logs -f
+docker compose run --rm gather-bots node dist/cli/checkup.js   # o checkup, no container
+```
+
+A imagem é construída em dois estágios, então não carrega TypeScript nem tsx: as camadas que este
+projeto acrescenta somam cerca de **1 MB** sobre o `node:24-alpine`. Memória limitada a 128 MB e
+logs com rotação — um monitor que atrapalha a máquina que ele monitora falhou no seu trabalho.
+
+**Linux sem Docker** — serviço systemd de usuário, sem root:
 
 ```bash
 mkdir -p ~/.config/systemd/user

@@ -5,7 +5,7 @@ export type Env = Record<string, string | undefined>;
 export type EnvVar = {
   name: string;
   required: boolean;
-  /** Shown by `pnpm doctor` when the variable is missing. Say what it is and where to get it. */
+  /** Shown by `pnpm checkup` when the variable is missing. Say what it is and where to get it. */
   describe: string;
 };
 
@@ -17,7 +17,7 @@ export type EnvVar = {
  * it to the list in `./index.ts`. Nothing in `src/domain` needs to change.
  */
 export type Integration = {
-  /** Stable, kebab-case. Appears in `pnpm doctor` output and in logs. */
+  /** Stable, kebab-case. Appears in `pnpm checkup` output and in logs. */
   id: string;
   label: string;
   /** Path to the setup guide, printed next to the integration when it is not configured. */

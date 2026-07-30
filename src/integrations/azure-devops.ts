@@ -1,7 +1,10 @@
 import { createAzdoBuildsSource, parseBuildScope } from "../adapters/azdo/azdo-builds-source.js";
 import { createAzdoSource } from "../adapters/azdo/azdo-source.js";
-import { createAzdoWorkItemsSource } from "../adapters/azdo/azdo-work-items-source.js";
-import { required } from "./env.js";
+import {
+  createAzdoWorkItemsSource,
+  parseTeam,
+} from "../adapters/azdo/azdo-work-items-source.js";
+import { optional, required } from "./env.js";
 import type { Integration } from "./registry.js";
 
 const DOCS = "docs/integrations/azure-devops.md";
@@ -51,6 +54,16 @@ export const azureDevOpsWorkItems: Integration = {
       required: true,
       describe: 'states that count as yours right now, e.g. "Doing,Rework,To do"',
     },
+    {
+      name: "AZDO_WORK_ITEM_TEAM",
+      required: false,
+      describe: 'optional "Project/Team" — scopes the query and unlocks the sprint filter',
+    },
+    {
+      name: "AZDO_WORK_ITEM_CURRENT_SPRINT",
+      required: false,
+      describe: "set to true to show only the sprint in progress (needs AZDO_WORK_ITEM_TEAM)",
+    },
   ],
   create: (env) =>
     createAzdoWorkItemsSource({
@@ -60,6 +73,8 @@ export const azureDevOpsWorkItems: Integration = {
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s !== ""),
+      team: parseTeam(optional(env, "AZDO_WORK_ITEM_TEAM")),
+      currentSprintOnly: optional(env, "AZDO_WORK_ITEM_CURRENT_SPRINT")?.toLowerCase() === "true",
     }),
 };
 

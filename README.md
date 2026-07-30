@@ -147,7 +147,21 @@ the difference. Delete `state/last-sent.json` after any manual poke.
 
 ## Running it continuously
 
-**Linux** — a systemd *user* service, no root required:
+**Docker** — the shortest path on a server:
+
+```bash
+cp .env.example .env      # fill it in
+docker compose up -d --build
+
+docker compose logs -f
+docker compose run --rm gather-bots node dist/cli/checkup.js   # the checkup, containerised
+```
+
+The image is built in two stages, so it ships neither TypeScript nor tsx: the layers this project
+adds come to about **1 MB** on top of `node:24-alpine`. Memory is capped at 128 MB and logs
+rotate, because a monitor that disturbs the host it watches has failed at its job.
+
+**Linux without Docker** — a systemd *user* service, no root required:
 
 ```bash
 mkdir -p ~/.config/systemd/user

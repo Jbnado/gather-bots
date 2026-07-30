@@ -2,7 +2,7 @@
  * Reports what is configured, what is off, and what is broken — the first thing to run when
  * something looks wrong, and the thing to read when setting up.
  *
- *   pnpm doctor
+ *   pnpm checkup
  */
 import { resolveObjects, resolveSources } from "../wiring.js";
 import { assertNodeVersion } from "../node-version.js";
