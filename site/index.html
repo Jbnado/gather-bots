@@ -84,6 +84,15 @@ a { color: var(--paper); }
 
 .hero { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(2rem, 5vw, 3.5rem); }
 
+/* The headline is large enough that a narrow paragraph under it leaves the right third of the
+   page dead. Setting the lede beside it, dropped to the headline's last baseline, uses the
+   width and makes the pairing deliberate rather than leftover. */
+.hero-top { display: grid; gap: 1.2rem; }
+@media (min-width: 62rem) {
+  .hero-top { grid-template-columns: 1.1fr 0.9fr; gap: 3rem; align-items: end; }
+  .hero-top .lede { margin-bottom: 0.5rem; }
+}
+
 /* ---------- the desk ---------- */
 
 .desk {
@@ -220,8 +229,10 @@ a { color: var(--paper); }
 @media (min-width: 48rem) { .cols[data-n="3"] { grid-template-columns: repeat(3, 1fr); } }
 
 .states { list-style: none; padding: 0; margin: 0.7rem 0 0; font-family: var(--mono); font-size: 0.83rem; }
-.states li { display: flex; gap: 0.6rem; padding: 0.22rem 0; color: var(--dim); }
-.states b { color: var(--paper); font-weight: 500; min-width: 5.2rem; }
+/* max-content, not a fixed width: a one-character symbol and the word "count" should not be
+   forced to the same column width, which left a gutter wide enough to read as a mistake. */
+.states li { display: grid; grid-template-columns: max-content 1fr; gap: 0.1rem 0.9rem; padding: 0.22rem 0; color: var(--dim); }
+.states b { color: var(--paper); font-weight: 500; }
 
 /* Source list */
 .sources { display: grid; gap: 0; margin-top: 0.5rem; }
@@ -277,12 +288,14 @@ footer a { color: var(--dim); }
 
 <header class="wrap hero">
   <div class="eyebrow">gather-bots</div>
+  <div class="hero-top">
   <h1>Put your work<br>on the desk.</h1>
   <p class="lede">
     The reviews waiting on you, the pipeline that just went red, the meeting starting in five
     minutes — shown on the objects sitting on your desk in Gather, where the room can read them
     without anyone opening a tab or asking.
   </p>
+  </div>
 
   <div class="desk" id="desk" data-lamp="on">
     <div class="objects">
@@ -353,7 +366,7 @@ footer a { color: var(--dim); }
         <li><b>✓</b> green and idle</li>
         <li><b>!</b> production broken</li>
         <li><b>?</b> develop broken, or a meeting close</li>
-        <li><b>◐</b> a build running, or you in a meeting</li>
+        <li><b>•</b> a build running, or you in a meeting</li>
       </ul>
     </div>
     <div>
@@ -490,7 +503,7 @@ Integrations
     { at: "15:20", note: "back, and a task moves to Doing",  inbox: 3, inboxLine: "2 reviews · 1 task",   state: "on",       statusLine: "all green",            lamp: true,  lampLine: "free to interrupt" }
   ];
 
-  const SYMBOL = { on: "✓", alert: "!", question: "?", working: "◐" };
+  const SYMBOL = { on: "✓", alert: "!", question: "?", working: "•" };
 
   const el = {
     desk: document.getElementById("desk"),
