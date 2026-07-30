@@ -1,0 +1,41 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    # Only the site is published, so nothing else needs to trigger a deploy.
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A newer push should win, but not by cancelling a deploy already writing to Pages.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # The site is one static file with no build step. Uploading `site/` rather than the repo
+      # root keeps docs/ and the source out of the published tree.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

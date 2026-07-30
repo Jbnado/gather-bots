@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gather-bots — put your work on the desk</title>
+<meta name="description" content="Shows pull requests waiting on you, broken pipelines and your next meeting on the Smart Objects in your Gather office.">
+<meta property="og:title" content="gather-bots">
+<meta property="og:description" content="Your desk in Gather, showing what you're actually working on.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* An office at dusk, lit by one desk lamp. The amber is the colour the switch
+     preset actually renders when it is on — measured, not picked. */
+  --room:   #1b1f2e;
+  --desk:   #2a3142;
+  --edge:   #3a4358;
+  --paper:  #e8e4dc;
+  --dim:    #8891a8;
+  --amber:  #f2b544;
+  --alert:  #e0603f;
+  --ok:     #6fae7c;
+
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--room);
+  color: var(--paper);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { width: min(100% - 2.5rem, 66rem); margin-inline: auto; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin: 1.2rem 0 0;
+}
+
+h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 0.6rem;
+}
+
+h3 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.35rem;
+}
+
+p { margin: 0 0 1rem; max-width: 62ch; }
+.lede { font-size: clamp(1.05rem, 2vw, 1.22rem); color: #cbd2e0; max-width: 54ch; }
+a { color: var(--paper); }
+
+/* ---------- hero ---------- */
+
+.hero { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(2rem, 5vw, 3.5rem); }
+
+/* ---------- the desk ---------- */
+
+.desk {
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+  background: linear-gradient(180deg, var(--desk), #232a39);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: clamp(2rem, 5vw, 3.2rem) clamp(1.2rem, 4vw, 3rem) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* The pool of light the lamp throws. Fades with the lamp. */
+.desk::before {
+  content: "";
+  position: absolute;
+  inset: -30% -10% auto;
+  height: 90%;
+  background: radial-gradient(ellipse at 82% 0%, rgba(242, 181, 68, 0.16), transparent 62%);
+  opacity: 0;
+  transition: opacity 700ms ease;
+  pointer-events: none;
+}
+.desk[data-lamp="on"]::before { opacity: 1; }
+
+.objects {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1rem, 4vw, 3rem);
+  align-items: end;
+  position: relative;
+}
+
+.object { text-align: center; }
+
+.object-name {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 1rem;
+}
+
+.object-line {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: #aab3c7;
+  min-height: 1.5em;
+  margin-top: 0.15rem;
+}
+
+.art { height: 92px; display: flex; align-items: flex-end; justify-content: center; }
+
+/* Inbox: a tray that fills up. */
+.tray { position: relative; width: 92px; }
+.sheets { display: flex; flex-direction: column-reverse; gap: 3px; align-items: center; margin-bottom: 4px; min-height: 34px; justify-content: flex-start; }
+.sheet {
+  width: 62px; height: 5px;
+  background: var(--paper);
+  opacity: 0.9;
+  transform-origin: center;
+  animation: drop 260ms ease-out;
+}
+.sheet:nth-child(even) { width: 66px; }
+@keyframes drop { from { transform: translateY(-10px); opacity: 0; } }
+.tray-body { height: 18px; border: 2px solid var(--dim); border-top: none; border-radius: 0 0 3px 3px; }
+.count {
+  position: absolute; top: -6px; right: -6px;
+  min-width: 26px; height: 26px;
+  display: grid; place-items: center;
+  background: var(--paper); color: var(--room);
+  font-family: var(--mono); font-weight: 500; font-size: 0.85rem;
+  border-radius: 999px;
+}
+.count[data-zero="true"] { background: var(--edge); color: var(--dim); }
+
+/* Status monitor: a small screen showing one symbol. */
+.monitor { width: 92px; }
+.screen {
+  height: 62px;
+  border: 2px solid var(--dim);
+  border-radius: 3px;
+  display: grid; place-items: center;
+  font-family: var(--display); font-weight: 700; font-size: 1.7rem;
+  background: #171b28;
+  transition: color 300ms ease, border-color 300ms ease;
+}
+.stand { width: 34px; height: 8px; margin: 0 auto; background: var(--dim); opacity: 0.5; }
+.screen[data-state="on"]      { color: var(--ok);    border-color: var(--ok); }
+.screen[data-state="alert"]   { color: var(--alert); border-color: var(--alert); }
+.screen[data-state="question"]{ color: var(--amber); border-color: var(--amber); }
+.screen[data-state="working"] { color: #7fa8d6;      border-color: #7fa8d6; }
+
+/* Lamp: a bulb that lights. */
+.lamp { width: 92px; display: flex; flex-direction: column; align-items: center; }
+.bulb {
+  width: 40px; height: 40px; border-radius: 999px;
+  border: 2px solid var(--dim);
+  background: #171b28;
+  transition: background 500ms ease, box-shadow 500ms ease, border-color 500ms ease;
+}
+.lamp[data-on="true"] .bulb {
+  background: var(--amber);
+  border-color: var(--amber);
+  box-shadow: 0 0 26px 6px rgba(242, 181, 68, 0.45);
+}
+.neck { width: 6px; height: 22px; background: var(--dim); opacity: 0.5; }
+.base { width: 46px; height: 7px; border-radius: 2px; background: var(--dim); opacity: 0.5; }
+
+/* The narration strip under the desk. */
+.timeline {
+  margin: clamp(1.8rem, 4vw, 2.6rem) calc(-1 * clamp(1.2rem, 4vw, 3rem)) 0;
+  border-top: 1px solid var(--edge);
+  padding: 0.9rem clamp(1.2rem, 4vw, 3rem);
+  display: flex; gap: 0.9rem; align-items: baseline;
+  font-family: var(--mono); font-size: 0.85rem;
+  background: rgba(0,0,0,0.16);
+}
+.clock { color: var(--amber); font-variant-numeric: tabular-nums; }
+.note { color: #b9c1d2; }
+
+.ticks { display: flex; gap: 5px; margin-left: auto; align-items: center; }
+.tick { width: 16px; height: 3px; background: var(--edge); border: 0; padding: 0; cursor: pointer; }
+.tick[aria-current="true"] { background: var(--amber); }
+.tick:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+/* ---------- generic sections ---------- */
+
+.band { padding: clamp(3.2rem, 8vw, 5.5rem) 0; border-top: 1px solid var(--edge); }
+.band-head { margin-bottom: clamp(1.8rem, 4vw, 2.6rem); }
+
+.cols { display: grid; gap: clamp(1.6rem, 4vw, 2.6rem); }
+@media (min-width: 48rem) { .cols[data-n="3"] { grid-template-columns: repeat(3, 1fr); } }
+
+.states { list-style: none; padding: 0; margin: 0.7rem 0 0; font-family: var(--mono); font-size: 0.83rem; }
+.states li { display: flex; gap: 0.6rem; padding: 0.22rem 0; color: var(--dim); }
+.states b { color: var(--paper); font-weight: 500; min-width: 5.2rem; }
+
+/* Source list */
+.sources { display: grid; gap: 0; margin-top: 0.5rem; }
+.source { display: grid; gap: 0.2rem 1.6rem; padding: 1rem 0; border-top: 1px solid var(--edge); }
+@media (min-width: 42rem) { .source { grid-template-columns: 15rem 1fr; } }
+.source-name { font-family: var(--mono); font-size: 0.88rem; color: var(--paper); }
+.source-gives { color: var(--dim); margin: 0; }
+
+/* Terminal blocks */
+pre {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.75;
+  background: #151925;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  padding: 1.1rem 1.2rem;
+  overflow-x: auto;
+  margin: 0;
+  color: #c6cddb;
+}
+.cmd { color: var(--paper); }
+.cmd::before { content: "$ "; color: var(--dim); }
+.yes { color: var(--ok); }
+.no  { color: var(--dim); }
+.hint { color: var(--dim); }
+
+.pair { display: grid; gap: 1.4rem; }
+@media (min-width: 54rem) { .pair { grid-template-columns: 1fr 1fr; gap: 2.4rem; align-items: start; } }
+
+.cta {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  border: 1px solid var(--paper);
+  border-radius: 2px;
+  padding: 0.7rem 1.4rem;
+  text-decoration: none;
+  margin-top: 0.6rem;
+  transition: background 160ms ease, color 160ms ease;
+}
+.cta:hover, .cta:focus-visible { background: var(--paper); color: var(--room); }
+
+footer { border-top: 1px solid var(--edge); padding: 2.4rem 0 3.4rem; color: var(--dim); font-size: 0.9rem; }
+footer a { color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="wrap hero">
+  <div class="eyebrow">gather-bots</div>
+  <h1>Put your work<br>on the desk.</h1>
+  <p class="lede">
+    The reviews waiting on you, the pipeline that just went red, the meeting starting in five
+    minutes — shown on the objects sitting on your desk in Gather, where the room can read them
+    without anyone opening a tab or asking.
+  </p>
+
+  <div class="desk" id="desk" data-lamp="on">
+    <div class="objects">
+      <div class="object">
+        <div class="art">
+          <div class="tray">
+            <div class="count" id="count" data-zero="true">0</div>
+            <div class="sheets" id="sheets"></div>
+            <div class="tray-body"></div>
+          </div>
+        </div>
+        <div class="object-name">Inbox</div>
+        <div class="object-line" id="inbox-line">nothing waiting</div>
+      </div>
+
+      <div class="object">
+        <div class="art">
+          <div class="monitor">
+            <div class="screen" id="screen" data-state="on">✓</div>
+            <div class="stand"></div>
+          </div>
+        </div>
+        <div class="object-name">Status monitor</div>
+        <div class="object-line" id="status-line">all green</div>
+      </div>
+
+      <div class="object">
+        <div class="art">
+          <div class="lamp" id="lamp" data-on="true">
+            <div class="bulb"></div>
+            <div class="neck"></div>
+            <div class="base"></div>
+          </div>
+        </div>
+        <div class="object-name">Lamp</div>
+        <div class="object-line" id="lamp-line">free to interrupt</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <span class="clock" id="clock">09:12</span>
+      <span class="note" id="note">a review lands on PR #8821</span>
+      <div class="ticks" id="ticks" role="group" aria-label="Moments in the day"></div>
+    </div>
+  </div>
+</header>
+
+<section class="band wrap">
+  <div class="band-head">
+    <h2>Three objects, three questions</h2>
+    <p>Each object answers one thing, so a glance is enough. What feeds it is up to you.</p>
+  </div>
+
+  <div class="cols" data-n="3">
+    <div>
+      <h3>What is waiting on me</h3>
+      <p>A count you can read across the room, and a feed of links you can click.</p>
+      <ul class="states">
+        <li><b>count</b> everything still on you</li>
+        <li><b>feed</b> oldest first, 15 max</li>
+        <li><b>+N</b> when the queue runs longer</li>
+      </ul>
+    </div>
+    <div>
+      <h3>What is running without me</h3>
+      <p>One symbol for the state of everything you don't have to touch.</p>
+      <ul class="states">
+        <li><b>✓</b> green and idle</li>
+        <li><b>!</b> production broken</li>
+        <li><b>?</b> develop broken, or a meeting close</li>
+        <li><b>◐</b> a build running, or you in a meeting</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Can I be interrupted</h3>
+      <p>Two states, so it reads from anywhere in the room. You choose which fact it carries.</p>
+      <ul class="states">
+        <li><b>lit</b> free to interrupt</li>
+        <li><b>dark</b> in a meeting, or one starts in 5</li>
+        <li><b>swap</b> lit when production is down instead</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="band wrap">
+  <div class="band-head">
+    <h2>Where the signals come from</h2>
+    <p>Connect one and it works. Everything you leave alone stays quietly off.</p>
+  </div>
+
+  <div class="sources">
+    <div class="source">
+      <div class="source-name">Azure DevOps · pull requests</div>
+      <p class="source-gives">Reviews assigned to you and still unvoted, plus your own pull requests sitting open longer than two days.</p>
+    </div>
+    <div class="source">
+      <div class="source-name">Azure DevOps · work items</div>
+      <p class="source-gives">Only the states you name as yours — and optionally only your team's current sprint.</p>
+    </div>
+    <div class="source">
+      <div class="source-name">Azure DevOps · pipelines</div>
+      <p class="source-gives">The latest run per pipeline and branch, so a failure that has since been fixed stops counting. Main and develop are told apart.</p>
+    </div>
+    <div class="source">
+      <div class="source-name">Google Calendar</div>
+      <p class="source-gives">Meetings in progress or about to start, and invitations you haven't answered. All-day entries are ignored.</p>
+    </div>
+    <div class="source">
+      <div class="source-name">Outlook · Microsoft 365</div>
+      <p class="source-gives">The same, from a Microsoft tenant. Both calendars can run at once.</p>
+    </div>
+    <div class="source">
+      <div class="source-name">Uptime monitor</div>
+      <p class="source-gives">Your monitor posts here when something goes down. Grafana and UptimeRobot have their own routes; anything else can use the plain one.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band wrap">
+  <div class="band-head">
+    <h2>Setting it up</h2>
+  </div>
+
+  <div class="pair">
+    <div>
+      <p>
+        Place an object in Gather, copy its webhook URL and key into <code>.env</code>, and ask
+        what's missing. You don't have to fill everything in — one object and one source is a
+        working setup.
+      </p>
+      <pre><span class="cmd">git clone git@github.com:Jbnado/gather-bots.git</span>
+<span class="cmd">pnpm install</span>
+<span class="cmd">cp .env.example .env</span>
+<span class="cmd">pnpm checkup</span></pre>
+      <p class="hint" style="font-family: var(--mono); font-size: 0.8rem; margin-top: 0.8rem;">
+        Needs Node 24 and pnpm. There's a compose file if you'd rather not.
+      </p>
+    </div>
+
+    <div>
+      <p>
+        <code>pnpm checkup</code> tells you where you stand at any point. It separates "you
+        haven't set this up" from "you set it up and it's broken", because only the second one
+        needs you.
+      </p>
+      <pre>Smart objects
+  <span class="yes">✓</span> Inbox                inbox · inbox
+  <span class="yes">✓</span> Bot Status Monitor   status · activity-monitor
+  <span class="no">○</span> Lightbulb            <span class="no">not configured</span>
+
+Integrations
+  <span class="yes">✓</span> Azure DevOps · pull requests    ready
+  <span class="no">○</span> Google Calendar    <span class="no">off — missing GOOGLE_CLIENT_ID</span>
+                     <span class="no">→ docs/integrations/google-calendar.md</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="band wrap">
+  <div class="band-head">
+    <h2>Making it yours</h2>
+    <p>
+      The middle of the program knows nothing about Azure DevOps, Google, Microsoft — or about
+      Gather. Three separate things can be added without touching it.
+    </p>
+  </div>
+
+  <div class="cols" data-n="3">
+    <div>
+      <h3>A source</h3>
+      <p>Jira, GitHub, Linear, an internal API. Return a list of signals; add one line to a list.</p>
+    </div>
+    <div>
+      <h3>A reading</h3>
+      <p>A different way to put those signals on an object. A pure function, testable in a few lines.</p>
+    </div>
+    <div>
+      <h3>Somewhere else entirely</h3>
+      <p>Drive a Hue bulb, a Slack status, an LED strip. Nothing above it has to change.</p>
+    </div>
+  </div>
+
+  <a class="cta" href="https://github.com/Jbnado/gather-bots">Read the code →</a>
+</section>
+
+<footer class="wrap">
+  <p style="margin:0">
+    <a href="https://github.com/Jbnado/gather-bots">github.com/Jbnado/gather-bots</a> ·
+    MIT · built for <a href="https://gather.town">Gather</a> Smart Objects
+  </p>
+</footer>
+
+<script>
+(function () {
+  // A plausible working day. Each moment is a real state this thing produces — nothing here
+  // is a shape the objects cannot actually take.
+  const DAY = [
+    { at: "09:12", note: "a review lands on PR #8821",       inbox: 1, inboxLine: "1 review",             state: "on",       statusLine: "all green",            lamp: true,  lampLine: "free to interrupt" },
+    { at: "10:30", note: "two more come in before standup",  inbox: 3, inboxLine: "3 reviews",            state: "on",       statusLine: "all green",            lamp: true,  lampLine: "free to interrupt" },
+    { at: "11:40", note: "main goes red on svc-orders",      inbox: 3, inboxLine: "3 reviews",            state: "alert",    statusLine: "svc-orders · main",    lamp: true,  lampLine: "free to interrupt" },
+    { at: "12:05", note: "someone ships the fix",            inbox: 2, inboxLine: "2 reviews",            state: "on",       statusLine: "all green",            lamp: true,  lampLine: "free to interrupt" },
+    { at: "13:55", note: "the weekly is five minutes out",   inbox: 2, inboxLine: "2 reviews",            state: "question", statusLine: "weekly in 5 min",      lamp: false, lampLine: "meeting close" },
+    { at: "14:00", note: "in the weekly",                    inbox: 2, inboxLine: "2 reviews",            state: "working",  statusLine: "in the weekly",        lamp: false, lampLine: "in a meeting" },
+    { at: "15:20", note: "back, and a task moves to Doing",  inbox: 3, inboxLine: "2 reviews · 1 task",   state: "on",       statusLine: "all green",            lamp: true,  lampLine: "free to interrupt" }
+  ];
+
+  const SYMBOL = { on: "✓", alert: "!", question: "?", working: "◐" };
+
+  const el = {
+    desk: document.getElementById("desk"),
+    sheets: document.getElementById("sheets"),
+    count: document.getElementById("count"),
+    inboxLine: document.getElementById("inbox-line"),
+    screen: document.getElementById("screen"),
+    statusLine: document.getElementById("status-line"),
+    lamp: document.getElementById("lamp"),
+    lampLine: document.getElementById("lamp-line"),
+    clock: document.getElementById("clock"),
+    note: document.getElementById("note"),
+    ticks: document.getElementById("ticks")
+  };
+
+  let index = 0;
+  let timer = null;
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  DAY.forEach(function (moment, i) {
+    const b = document.createElement("button");
+    b.className = "tick";
+    b.type = "button";
+    b.setAttribute("aria-label", moment.at + " — " + moment.note);
+    b.addEventListener("click", function () { stop(); show(i); });
+    el.ticks.appendChild(b);
+  });
+
+  function show(i) {
+    index = i;
+    const m = DAY[i];
+
+    // Rebuild only what changed, so a sheet does not replay its drop on every step.
+    const have = el.sheets.children.length;
+    if (m.inbox > have) {
+      for (let n = have; n < m.inbox; n++) {
+        el.sheets.appendChild(Object.assign(document.createElement("div"), { className: "sheet" }));
+      }
+    } else if (m.inbox < have) {
+      for (let n = have; n > m.inbox; n--) el.sheets.lastChild.remove();
+    }
+
+    el.count.textContent = String(m.inbox);
+    el.count.dataset.zero = String(m.inbox === 0);
+    el.inboxLine.textContent = m.inboxLine;
+
+    el.screen.dataset.state = m.state;
+    el.screen.textContent = SYMBOL[m.state];
+    el.statusLine.textContent = m.statusLine;
+
+    el.lamp.dataset.on = String(m.lamp);
+    el.desk.dataset.lamp = m.lamp ? "on" : "off";
+    el.lampLine.textContent = m.lampLine;
+
+    el.clock.textContent = m.at;
+    el.note.textContent = m.note;
+
+    Array.prototype.forEach.call(el.ticks.children, function (t, n) {
+      t.setAttribute("aria-current", String(n === i));
+    });
+  }
+
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+  show(0);
+
+  // Reduced motion gets the busiest frame and no ticking, rather than a frozen empty desk.
+  if (still) {
+    show(2);
+  } else {
+    timer = setInterval(function () { show((index + 1) % DAY.length); }, 2600);
+  }
+})();
+</script>
+
+</body>
+</html>
