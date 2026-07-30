@@ -1,0 +1,39 @@
+# systemd user service — runs without root, and stops when you log out unless lingering is on.
+#
+#   mkdir -p ~/.config/systemd/user
+#   sed "s|__DIR__|$PWD|g; s|__PNPM__|$(command -v pnpm)|g" scripts/gather-bots.service \
+#     > ~/.config/systemd/user/gather-bots.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now gather-bots
+#
+#   systemctl --user status gather-bots     # is it alive
+#   journalctl --user -u gather-bots -f     # follow the log
+#
+# To keep it running while you are logged out (a shared or headless box):
+#   sudo loginctl enable-linger $USER
+
+[Unit]
+Description=gather-bots — drives Gather Smart Objects from your real work
+# Starting before the network is up just burns a restart; the service would fail its first tick.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__DIR__
+ExecStart=__PNPM__ start
+
+# A failed tick is already caught in-process, so a crash here means something structural —
+# retry, but slowly enough that a bad token does not hammer anyone's API.
+Restart=on-failure
+RestartSec=60
+
+# The service holds API tokens in .env; these keep the blast radius small if it is ever exploited.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__DIR__/state
+
+[Install]
+WantedBy=default.target

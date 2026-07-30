@@ -1,5 +1,7 @@
 # gather-bots
 
+[![CI](https://github.com/Jbnado/gather-bots/actions/workflows/ci.yml/badge.svg)](https://github.com/Jbnado/gather-bots/actions/workflows/ci.yml)
+
 Alimenta os Smart Objects do [Gather](https://gather.town) com o seu trabalho de verdade — PRs
 esperando por você, pipelines que quebraram, tarefas em andamento, reuniões prestes a começar.
 Sua mesa no escritório virtual conta o que está acontecendo sem ninguém abrir outra aba.
@@ -127,8 +129,26 @@ ao mesmo tempo.
 
 ## Rodando continuamente
 
-`scripts/install-task.ps1` registra como tarefa agendada do Windows, iniciando no logon, sem
-precisar de admin. No Linux ou macOS qualquer supervisor serve — é um processo Node comum.
+**Linux** — serviço systemd de usuário, sem root:
+
+```bash
+mkdir -p ~/.config/systemd/user
+sed "s|__DIR__|$PWD|g; s|__PNPM__|$(command -v pnpm)|g" scripts/gather-bots.service \
+  > ~/.config/systemd/user/gather-bots.service
+systemctl --user daemon-reload
+systemctl --user enable --now gather-bots
+
+journalctl --user -u gather-bots -f    # acompanhar o log
+```
+
+Em máquina compartilhada ou sem sessão gráfica, `sudo loginctl enable-linger $USER` mantém
+rodando mesmo com você deslogado.
+
+**Windows** — `powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1` registra uma
+tarefa agendada que inicia no logon, sem precisar de admin.
+
+**macOS** — qualquer supervisor serve, é um processo Node comum. O caminho mais curto é
+`pm2 start pnpm --name gather-bots -- start`.
 
 ## Licença
 

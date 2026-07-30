@@ -1,5 +1,7 @@
 # gather-bots
 
+[![CI](https://github.com/Jbnado/gather-bots/actions/workflows/ci.yml/badge.svg)](https://github.com/Jbnado/gather-bots/actions/workflows/ci.yml)
+
 Drive [Gather](https://gather.town) Smart Objects from your real work — pull requests waiting on
 you, pipelines that broke, tasks in progress, meetings about to start. Your desk in the virtual
 office tells your team what's going on without anyone opening another tab.
@@ -147,8 +149,26 @@ the difference. Delete `state/last-sent.json` after any manual poke.
 
 ## Running it continuously
 
-`scripts/install-task.ps1` registers it as a Windows scheduled task that starts at logon, no
-admin needed. On Linux or macOS, any supervisor works — it's a plain Node process.
+**Linux** — a systemd *user* service, no root required:
+
+```bash
+mkdir -p ~/.config/systemd/user
+sed "s|__DIR__|$PWD|g; s|__PNPM__|$(command -v pnpm)|g" scripts/gather-bots.service \
+  > ~/.config/systemd/user/gather-bots.service
+systemctl --user daemon-reload
+systemctl --user enable --now gather-bots
+
+journalctl --user -u gather-bots -f    # follow the log
+```
+
+On a headless or shared box, `sudo loginctl enable-linger $USER` keeps it running while you're
+logged out.
+
+**Windows** — `powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1` registers a
+scheduled task that starts at logon. No admin needed.
+
+**macOS** — any supervisor works; it's a plain Node process. `pm2 start pnpm --name gather-bots
+-- start` is the shortest path.
 
 ## License
 
