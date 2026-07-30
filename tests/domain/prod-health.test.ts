@@ -40,6 +40,16 @@ describe("reduceProdHealth", () => {
     expect(state.description).toBe("Produção quebrada: api, web");
   });
 
+  test("lights up for an open incident even when every pipeline is green", () => {
+    const state = reduceProdHealth([
+      signal("build", { source: "azdo-builds", state: "succeeded", environment: "prod" }),
+      signal("incident", { source: "uptime", state: "failed", environment: "prod", title: "API fora" }),
+    ]);
+
+    expect(state.on).toBe(true);
+    expect(state.description).toBe("Produção quebrada: API fora");
+  });
+
   // With no pipeline integration configured this surface has nothing to say, and must not
   // claim production is healthy.
   test("says it does not know when there are no builds at all", () => {

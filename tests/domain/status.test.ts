@@ -102,6 +102,17 @@ describe("reduceStatus", () => {
     expect(state.state).toBe("on");
   });
 
+  // An uptime monitor reporting production down is the loudest thing this object can say.
+  test("reports alert when an incident is open", () => {
+    const state = reduceStatus(
+      [signal("incident", { source: "uptime", state: "failed", environment: "prod", title: "API fora" })],
+      NOW,
+    );
+
+    expect(state.state).toBe("alert");
+    expect(state.activity.map((a) => a.text)).toContain("API fora");
+  });
+
   test("reports off when there is nothing to show", () => {
     expect(reduceStatus([], NOW).state).toBe("off");
   });

@@ -9,12 +9,15 @@ import type { LightbulbState } from "./lightbulb.js";
  * `info.description`, so nobody has to remember which convention a given desk uses.
  */
 export function reduceProdHealth(signals: readonly Signal[]): LightbulbState {
-  const builds = signals.filter((s) => s.kind === "build" || s.kind === "release");
+  // An uptime monitor and a pipeline are both evidence about production, so both count here.
+  const evidence = signals.filter(
+    (s) => s.kind === "build" || s.kind === "release" || s.kind === "incident",
+  );
 
   // Never claim production is healthy on the strength of no evidence.
-  if (builds.length === 0) return { on: false, description: "Sem dados de pipeline" };
+  if (evidence.length === 0) return { on: false, description: "Sem dados de pipeline" };
 
-  const broken = builds.filter((s) => s.state === "failed" && s.environment === "prod");
+  const broken = evidence.filter((s) => s.state === "failed" && s.environment === "prod");
 
   if (broken.length === 0) return { on: false, description: "Produção saudável" };
 

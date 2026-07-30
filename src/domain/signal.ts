@@ -1,5 +1,11 @@
 /** Where a signal came from. Surfaces never branch on this — it exists for feed ids and debugging. */
-export type SourceId = "azdo-prs" | "azdo-builds" | "azdo-work-items" | "gcal" | "outlook";
+export type SourceId =
+  | "azdo-prs"
+  | "azdo-builds"
+  | "azdo-work-items"
+  | "gcal"
+  | "outlook"
+  | "uptime";
 
 /**
  * The semantic fact a source reports. Sources never decide which object a signal lands on;
@@ -13,7 +19,9 @@ export type SignalKind =
   | "calendar_invite_unanswered"
   | "calendar_event"
   | "build"
-  | "release";
+  | "release"
+  /** Something an uptime monitor says is down. */
+  | "incident";
 
 export type RunState = "running" | "succeeded" | "failed";
 

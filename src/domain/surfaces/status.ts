@@ -12,6 +12,7 @@ const RUNS_WITHOUT_ME: ReadonlySet<SignalKind> = new Set<SignalKind>([
   "build",
   "release",
   "calendar_event",
+  "incident",
 ]);
 
 /** A meeting starting this soon is worth a heads-up. */
