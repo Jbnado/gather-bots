@@ -10,6 +10,9 @@
 import { createFileStateStore } from "./adapters/state/file-state-store.js";
 import { refresh } from "./domain/refresh.js";
 import { resolveObjects, resolveSources } from "./wiring.js";
+import { assertNodeVersion } from "./node-version.js";
+
+assertNodeVersion();
 
 const once = process.argv.includes("--once");
 

@@ -5,6 +5,9 @@
  *   pnpm doctor
  */
 import { resolveObjects, resolveSources } from "../wiring.js";
+import { assertNodeVersion } from "../node-version.js";
+
+assertNodeVersion();
 
 const ON = "✓";
 const OFF = "○";

@@ -23,13 +23,26 @@ o resto quando quiser; o que não estiver configurado fica quieto, desligado.
 
 ## Começando
 
+Você precisa de **Node 24 ou mais novo** (exigência do SDK do Gather) e **pnpm**. Se a máquina tem
+Node antigo e você não pode trocar no sistema, um gerenciador de versão resolve localmente:
+
 ```bash
-git clone https://github.com/Jbnado/gather-bots.git
+fnm install 24 && fnm use 24      # ou: nvm install 24 && nvm use 24
+npm install -g pnpm               # se ainda não tiver pnpm
+```
+
+Depois:
+
+```bash
+git clone git@github.com:Jbnado/gather-bots.git
 cd gather-bots
 pnpm install
-cp .env.example .env
-pnpm checkup          # diz exatamente o que preencher em seguida
+cp .env.example .env              # PowerShell: copy .env.example .env
+pnpm checkup                      # diz exatamente o que preencher em seguida
 ```
+
+`pnpm checkup` funciona **antes** de você configurar qualquer coisa — é justamente o objetivo. Ele
+nunca falha por falta de configuração, só diz o que está faltando.
 
 `pnpm checkup` é o comando pra rodar sempre que algo parecer errado. Ele classifica cada objeto e
 cada integração em três estados:

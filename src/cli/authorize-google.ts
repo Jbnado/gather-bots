@@ -5,10 +5,13 @@
  *   pnpm authorize:google
  *
  * Needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from a "Desktop app" OAuth client.
- * See docs/setup-google.md for the console steps.
+ * See docs/integrations/google-calendar.md for the console steps.
  */
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { assertNodeVersion } from "../node-version.js";
+import { openBrowser } from "../open-browser.js";
+
+assertNodeVersion();
 
 /** Least privilege: reading events is all this service ever does. */
 const SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly";
@@ -19,8 +22,8 @@ const clientId = process.env.GOOGLE_CLIENT_ID;
 const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
 if (!clientId || !clientSecret) {
-  console.error("Preencha GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no .env primeiro.");
-  console.error("Passo a passo: docs/setup-google.md");
+  console.error("Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first.");
+  console.error("Step by step: docs/integrations/google-calendar.md");
   process.exit(1);
 }
 
@@ -46,8 +49,8 @@ const code = await new Promise<string>((resolve, reject) => {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(
       received
-        ? "<h2>Autorizado.</h2><p>Pode fechar esta aba e voltar ao terminal.</p>"
-        : `<h2>Falhou.</h2><p>${error ?? "sem código"}</p>`,
+        ? "<h2>Authorised.</h2><p>You can close this tab and return to the terminal.</p>"
+        : `<h2>Failed.</h2><p>${error ?? "no code returned"}</p>`,
     );
 
     server.close();
@@ -56,9 +59,9 @@ const code = await new Promise<string>((resolve, reject) => {
   });
 
   server.listen(PORT, () => {
-    console.log("Abrindo o consentimento no browser...");
-    console.log(`Se não abrir sozinho, cole esta URL:\n\n${authUrl}\n`);
-    spawn("cmd", ["/c", "start", "", authUrl], { detached: true, stdio: "ignore" }).unref();
+    console.log("Opening the consent screen in your browser...");
+    console.log(`If it does not open, paste this URL:\n\n${authUrl}\n`);
+    openBrowser(authUrl);
   });
 });
 
@@ -77,10 +80,10 @@ const res = await fetch("https://oauth2.googleapis.com/token", {
 const body = (await res.json()) as { refresh_token?: string; error_description?: string };
 
 if (!res.ok || !body.refresh_token) {
-  console.error(`Troca do código falhou: ${body.error_description ?? res.status}`);
+  console.error(`Token exchange failed: ${body.error_description ?? res.status}`);
   process.exit(1);
 }
 
-console.log("\nPronto. Cole esta linha no .env:\n");
+console.log("\nDone. Paste this line into .env:\n");
 console.log(`GOOGLE_REFRESH_TOKEN=${body.refresh_token}`);
-console.log("\nDepois rode: pnpm once");
+console.log("\nThen run: pnpm checkup");
