@@ -43,11 +43,9 @@ cp .env.example .env              # PowerShell: copy .env.example .env
 pnpm checkup                      # tells you exactly what to fill in next
 ```
 
-`pnpm checkup` works before you configure anything — that's the point. It never fails for lack of
-configuration, it just tells you what's missing.
-
-`pnpm checkup` is the command to run whenever something looks wrong. It reports every object and
-every integration as one of three things:
+`pnpm checkup` works before you configure anything — that's the point — and it's the command to
+run whenever something looks wrong later. It reports every object and every integration as one of
+three things:
 
 | | meaning |
 |---|---|
@@ -172,4 +170,4 @@ scheduled task that starts at logon. No admin needed.
 
 ## License
 
-MIT OR Apache-2.0, at your option.
+MIT — see [LICENSE](LICENSE).

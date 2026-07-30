@@ -152,4 +152,4 @@ tarefa agendada que inicia no logon, sem precisar de admin.
 
 ## Licença
 
-MIT.
+MIT — veja [LICENSE](LICENSE).
