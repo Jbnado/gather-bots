@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # Every test runs against fakes, so no secrets are needed and forks get full CI on day one.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The project is developed on Windows but claims to run anywhere. Proving that on every
+        # push is cheaper than finding out from someone else's bug report.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches engines.node — the Gather SDK requires 24.
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      # The friendliest failure mode is the one a new contributor hits first: a clone with no
+      # configuration at all. It must report what is missing and exit cleanly, never crash.
+      - name: checkup with no configuration
+        run: pnpm checkup
