@@ -93,6 +93,16 @@ Built-in surfaces: `inbox`, `activity-monitor`, `availability`, `prod-health`.
 Both calendars can run at once. They produce the same kinds of signal and the surfaces never ask
 which one a signal came from.
 
+Most integrations narrow down further without any code. Work items can be limited to your
+team's current sprint, and pipelines take an include and an exclude pattern per project — the
+usual shape being a whole family minus the one that is always red for reasons nobody owns:
+
+```bash
+AZDO_WORK_ITEM_TEAM="My Project/My Team"
+AZDO_WORK_ITEM_CURRENT_SPRINT=true
+AZDO_BUILD_SCOPE=[{"project":"Platform","match":"^api-","exclude":"^api-sandbox$"}]
+```
+
 ## Adding your own
 
 The core knows nothing about Azure DevOps, Google, Microsoft — or even about Gather. Ports and

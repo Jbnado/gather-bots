@@ -94,6 +94,17 @@ Disponíveis: `inbox`, `activity-monitor`, `availability`, `prod-health`.
 
 As duas agendas podem rodar juntas.
 
+A maioria das integrações estreita mais sem escrever código. Work items podem ficar só no sprint
+atual do seu time, e pipelines aceitam um padrão de inclusão e um de exclusão por projeto — o
+formato mais comum sendo uma família inteira menos aquela que vive vermelha por motivos que
+ninguém assume:
+
+```bash
+AZDO_WORK_ITEM_TEAM="Meu Projeto/Meu Time"
+AZDO_WORK_ITEM_CURRENT_SPRINT=true
+AZDO_BUILD_SCOPE=[{"project":"Plataforma","match":"^api-","exclude":"^api-sandbox$"}]
+```
+
 ## Criando as suas
 
 O núcleo não conhece Azure DevOps, Google, Microsoft — nem o Gather. Ports and adapters do começo
