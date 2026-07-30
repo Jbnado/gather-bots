@@ -19,9 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `version:` here on purpose. The action refuses to run when the version is declared in
+      # two places, and package.json's `packageManager` is the one that also pins the Docker
+      # build — so it is the single source of truth.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
