@@ -1,12 +1,15 @@
 import type { Signal } from "../../domain/signal.js";
 import type { SignalSourcePort } from "../../ports/signal-source.js";
 import { type AzdoBuild, toBuildSignals } from "./map-builds.js";
+import { selectDefinitions } from "./select-definitions.js";
 
 /** One watched project, optionally narrowed to pipelines whose name matches `match`. */
 export type BuildScopeEntry = {
   project: string;
-  /** Regex source, e.g. "^rpa-". Omit to watch every pipeline in the project. */
+  /** Regex source, e.g. "^api-". Omit to watch every pipeline in the project. */
   match?: string;
+  /** Regex source. Anything matching is dropped, even if `match` allowed it. */
+  exclude?: string;
 };
 
 export type AzdoBuildsConfig = {
@@ -31,8 +34,10 @@ export function createAzdoBuildsSource(config: AzdoBuildsConfig): SignalSourcePo
       `${org}/${project}/_apis/build/definitions?api-version=7.1`,
     );
 
-    const pattern = entry.match === undefined ? undefined : new RegExp(entry.match, "i");
-    const wanted = (defs.value ?? []).filter((d) => pattern?.test(d.name) ?? true);
+    const wanted = selectDefinitions(defs.value ?? [], {
+      match: entry.match,
+      exclude: entry.exclude,
+    });
     if (wanted.length === 0) return [];
 
     // Asking per definition keeps a busy pipeline from crowding the others out of the window.

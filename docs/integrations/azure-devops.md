@@ -68,11 +68,21 @@ failing every tick.
 ## 3. Pipelines (optional)
 
 ```
-AZDO_BUILD_SCOPE=[{"project":"Web"},{"project":"Platform","match":"^api-"}]
+AZDO_BUILD_SCOPE=[{"project":"Web"},{"project":"Platform","match":"^api-","exclude":"legacy"}]
 ```
 
-JSON on one line. Omit `match` to watch every pipeline in the project; supply a regex on the
-pipeline name to narrow it.
+JSON on one line, with two optional case-insensitive regexes per project:
+
+| | |
+|---|---|
+| `match` | keep only pipelines whose name matches. Omit to start from all of them. |
+| `exclude` | drop pipelines whose name matches, even if `match` allowed them. |
+
+`exclude` runs last and wins outright. A config that both includes and excludes the same
+pipeline is contradictory, and the quieter reading is the safer one to act on.
+
+The usual shape is a family minus one noisy member:
+`{"project":"Platform","match":"^api-","exclude":"^api-sandbox$"}`.
 
 Only `refs/heads/main`, `refs/heads/master` and `refs/heads/develop` count. Feature branches and
 `refs/pull/*` validation builds are ignored: a red PR build is the author's problem, not the
