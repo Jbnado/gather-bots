@@ -90,6 +90,7 @@ Disponíveis: `inbox`, `activity-monitor`, `availability`, `prod-health`.
 | Azure DevOps — pipelines | saúde das builds, prod e develop separados | [guia](docs/integrations/azure-devops.md) |
 | Google Calendar | reuniões, convites não respondidos | [guia](docs/integrations/google-calendar.md) |
 | Outlook / Microsoft 365 | o mesmo, num tenant Microsoft | [guia](docs/integrations/outlook.md) |
+| Monitor de uptime | quedas empurradas por webhook — genérico, Grafana ou UptimeRobot | [guia](docs/integrations/uptime.md) |
 
 As duas agendas podem rodar juntas.
 

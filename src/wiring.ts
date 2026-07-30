@@ -1,7 +1,7 @@
 import { createGatherSmartObject } from "./adapters/gather/gather-smart-object.js";
 import { withLastKnownGood } from "./domain/last-known-good.js";
 import type { SurfaceTarget } from "./domain/refresh.js";
-import { INTEGRATIONS, type Env, resolveIntegrations } from "./integrations/index.js";
+import { INTEGRATIONS, type Env, type Integration, resolveIntegrations } from "./integrations/index.js";
 import { findSurface, OBJECT_SLOTS } from "./objects/registry.js";
 import type { SignalSourcePort } from "./ports/signal-source.js";
 
@@ -96,7 +96,7 @@ export async function resolveObjects(env: Env): Promise<ObjectStatus[]> {
 }
 
 export type SourceStatus =
-  | { id: string; label: string; state: "on"; source: SignalSourcePort }
+  | { id: string; label: string; state: "on"; source: SignalSourcePort; integration: Integration }
   | { id: string; label: string; state: "off"; missing: string[]; docs: string }
   | { id: string; label: string; state: "broken"; reason: string; docs: string };
 
@@ -118,6 +118,7 @@ export function resolveSources(env: Env): SourceStatus[] {
         id: status.id,
         label: status.label,
         state: "on" as const,
+        integration: status.integration,
         // Wrapping here rather than inside each integration means contributors get outage
         // tolerance without having to think about it.
         source: withLastKnownGood(status.integration.create(env), { maxAgeMs: STALE_AFTER_MS }),

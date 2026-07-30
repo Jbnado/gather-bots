@@ -35,6 +35,26 @@ if (targets.length === 0 || live.length === 0) {
   process.exit(1);
 }
 
+// Push integrations listen instead of asking. Started before the first tick, so an outage
+// arriving during startup is already in the state that tick reads.
+const shutdowns: Array<() => Promise<void>> = [];
+for (const source of sources) {
+  if (source.state !== "on" || source.integration.start === undefined) continue;
+  try {
+    shutdowns.push(await source.integration.start(process.env));
+  } catch (error) {
+    console.warn(`could not start ${source.id}: ${(error as Error).message}`);
+  }
+}
+
+// Without this the container sits out its kill timeout on every deploy, and an in-flight
+// webhook write can be cut mid-file.
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    void Promise.all(shutdowns.map((stop) => stop())).then(() => process.exit(0));
+  });
+}
+
 const store = createFileStateStore(process.env.STATE_FILE ?? "./state/last-sent.json");
 
 async function tick(): Promise<void> {

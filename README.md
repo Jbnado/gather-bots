@@ -88,6 +88,7 @@ Built-in surfaces: `inbox`, `activity-monitor`, `availability`, `prod-health`.
 | Azure DevOps — pipelines | build health, prod and develop told apart | [guide](docs/integrations/azure-devops.md) |
 | Google Calendar | meetings, unanswered invites | [guide](docs/integrations/google-calendar.md) |
 | Outlook / Microsoft 365 | the same, from a Microsoft tenant | [guide](docs/integrations/outlook.md) |
+| Uptime monitor | outages pushed in by webhook — generic, Grafana or UptimeRobot | [guide](docs/integrations/uptime.md) |
 
 Both calendars can run at once. They produce the same kinds of signal and the surfaces never ask
 which one a signal came from.

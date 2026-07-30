@@ -12,7 +12,12 @@ services:
 
     # env_file rather than `environment:` so secrets never appear in this file or in
     # `docker inspect` output as literals someone might paste into a ticket.
-    env_file: .env
+    #
+    # required: false because a missing .env should produce this project's own "here is what to
+    # configure" message, not a compose error about GetFileAttributesEx.
+    env_file:
+      - path: .env
+        required: false
 
     # Overrides whatever .env says, because the path inside the container is not the host's.
     environment:
@@ -20,6 +25,14 @@ services:
 
     volumes:
       - state:/app/state
+
+    # Only needed for the uptime webhook integration; harmless otherwise, since nothing listens
+    # unless UPTIME_WEBHOOK_TOKEN is set.
+    #
+    # Bound to 127.0.0.1 so only a reverse proxy on this host can reach it. Drop the prefix to
+    # expose it to your network — worth doing deliberately, not by accident.
+    ports:
+      - "127.0.0.1:${UPTIME_WEBHOOK_PORT:-8787}:${UPTIME_WEBHOOK_PORT:-8787}"
 
     # This is one HTTP poller. Capping it means a runaway loop or a memory leak stays a
     # contained annoyance rather than something that disturbs whatever else shares the host.

@@ -4,6 +4,7 @@ import {
   azureDevOpsWorkItems,
 } from "./azure-devops.js";
 import { googleCalendar, outlookCalendar } from "./calendars.js";
+import { uptimeWebhook } from "./uptime.js";
 import type { Integration } from "./registry.js";
 
 /**
@@ -28,6 +29,7 @@ export const INTEGRATIONS: readonly Integration[] = [
   azureDevOpsBuilds,
   googleCalendar,
   outlookCalendar,
+  uptimeWebhook,
 ];
 
 export { type Env, type Integration, type IntegrationStatus, resolveIntegrations } from "./registry.js";

@@ -24,6 +24,14 @@ export type Integration = {
   docs: string;
   env: EnvVar[];
   create(env: Env): SignalSourcePort;
+  /**
+   * Optional lifecycle hook for *push* integrations — anything that has to listen rather than
+   * ask. Called once at startup and only when the integration is enabled; returns the function
+   * that shuts it down again.
+   *
+   * Polling integrations leave this out: `create` alone is their whole contract.
+   */
+  start?(env: Env): Promise<() => Promise<void>>;
 };
 
 export type IntegrationStatus =
