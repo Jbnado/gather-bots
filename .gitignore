@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+*.local
+# Anchored: an unanchored `state/` also matched src/adapters/state/,
+# which silently kept a source file out of every commit.
+/state/
+dist/
+.vitest/
+
+# Claude Code session state
+.claude/

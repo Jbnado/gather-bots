@@ -1,0 +1,41 @@
+{
+  "name": "gather-bots",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "once": "node --env-file-if-exists=.env --import tsx src/main.ts --once",
+    "start": "node --env-file-if-exists=.env --import tsx src/main.ts",
+    "authorize:google": "node --env-file-if-exists=.env --import tsx src/cli/authorize-google.ts",
+    "authorize:outlook": "node --env-file-if-exists=.env --import tsx src/cli/authorize-outlook.ts",
+    "checkup": "node --env-file-if-exists=.env --import tsx src/cli/checkup.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@gathertown/webhook-object-sdk": "^0.2.0"
+  },
+  "description": "Drive Gather Smart Objects from your real work: pull requests, pipelines, tasks and calendar.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jbnado/gather-bots.git"
+  },
+  "keywords": [
+    "gather",
+    "gather.town",
+    "smart-objects",
+    "webhooks",
+    "azure-devops",
+    "dashboard"
+  ]
+}
