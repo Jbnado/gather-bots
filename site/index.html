@@ -100,7 +100,7 @@ code { font-family: var(--mono); font-size: 0.92em; color: var(--warm); }
   background: linear-gradient(180deg, var(--panel2) 0%, var(--panel) 42%, #232733 100%);
   border: 1px solid #3d4257;
   border-radius: 4px;
-  padding: clamp(2rem, 5vw, 3.4rem) clamp(1.2rem, 4vw, 3rem) 0;
+  padding: clamp(1.8rem, 4vw, 2.6rem) clamp(1rem, 3vw, 2rem) 0;
   position: relative;
   overflow: hidden;
 }
@@ -119,9 +119,10 @@ code { font-family: var(--mono); font-size: 0.92em; color: var(--warm); }
    letterbox it was never framed for. */
 .scene { display: grid; gap: clamp(1.4rem, 4vw, 3rem); position: relative; align-items: center; }
 @media (min-width: 50rem) {
-  /* Both columns bounded and the pair centred: letting the readouts take 1fr stretched them
-     across empty space and pushed the photograph off to one side. */
-  .scene { grid-template-columns: minmax(0, 340px) minmax(0, 27rem); justify-content: center; }
+  /* The photograph is the best thing on the page and was rendering at 245px. It gets the room
+     now, and the readouts take only the width their text needs instead of stretching into the
+     gap beside them. */
+  .scene { grid-template-columns: minmax(0, 430px) max-content; justify-content: center; }
 }
 
 .shot { border: 1px solid #3d4257; border-radius: 3px; overflow: hidden; display: block; }
@@ -161,6 +162,11 @@ code { font-family: var(--mono); font-size: 0.92em; color: var(--warm); }
 .band--raised { background: var(--panel); border-top: 1px solid #3d4257; border-bottom: 1px solid #3d4257; }
 
 .band-head { margin-bottom: clamp(1.8rem, 4vw, 2.8rem); }
+
+/* Credit where the objects come from, set narrow like a note rather than a pitch. */
+.origin { max-width: 46rem; }
+.origin p { color: #b8bdd0; }
+.origin a { color: var(--warm); text-decoration-color: rgba(255, 230, 163, 0.4); text-underline-offset: 3px; }
 
 /* Each object explained beside its own portrait, alternating sides. */
 .explain { display: grid; gap: clamp(1.2rem, 3vw, 2.4rem); }
@@ -274,6 +280,30 @@ footer a { color: var(--dim); }
     <div class="deskfoot">A real desk, mid-afternoon. The monitor smiles because nothing is broken.</div>
   </div>
 </header>
+
+<section class="band wrap">
+  <div class="origin">
+    <h2>The objects are Gather's</h2>
+    <p>
+      Smart Objects are a Gather feature, shipped in July 2026: you place one from Decorate Desk,
+      it gives you a webhook URL and a key, and it renders whatever you send it. That part is
+      theirs — <a href="https://support.help.gather.town/articles/1914828565">their guide</a>
+      explains placing one, and
+      <a href="https://github.com/gathertown/webhook-objects/blob/main/docs/reference.md">their reference</a>
+      documents what each object accepts.
+    </p>
+    <p>
+      You do not need this project to use them. Anything that can make an HTTP request will do,
+      and Gather publishes
+      <a href="https://www.npmjs.com/package/@gathertown/webhook-object-sdk">an SDK</a> that
+      handles the signing for you.
+    </p>
+    <p>
+      What lives here is the part after that: deciding what is worth showing, keeping it honest
+      when a source goes quiet, and not spending your space's rate limit repeating yourself.
+    </p>
+  </div>
+</section>
 
 <section class="band wrap">
   <div class="band-head">
