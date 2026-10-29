@@ -58,4 +58,32 @@ describe("reduceProdHealth", () => {
     expect(state.on).toBe(false);
     expect(state.description).toBe("Sem dados de pipeline");
   });
+
+  // The uptime source answering with nothing open is evidence too: an instance fed only by the
+  // uptime webhook would otherwise show "no pipeline data" forever. It still does not claim
+  // health — a monitor only knows about the checks it has.
+  test("says no outage is open when only the uptime source answered", () => {
+    const state = reduceProdHealth([], new Set(["uptime"]));
+
+    expect(state.on).toBe(false);
+    expect(state.description).toBe("Nenhuma queda aberta");
+  });
+
+  test("still lights up for an outage reported by the uptime source alone", () => {
+    const state = reduceProdHealth(
+      [signal("incident", { source: "uptime", state: "failed", environment: "prod", title: "api" })],
+      new Set(["uptime"]),
+    );
+
+    expect(state.on).toBe(true);
+  });
+
+  // A failing uptime source is absent from the reporting set, so its silence must not read as
+  // "nothing is down".
+  test("does not count a source that did not answer", () => {
+    const state = reduceProdHealth([], new Set(["azdo-prs"]));
+
+    expect(state.description).toBe("Sem dados de pipeline");
+  });
 });
+

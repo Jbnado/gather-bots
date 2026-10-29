@@ -20,7 +20,8 @@ export type SurfaceDefinition = {
   label: string;
   /** The preset an object must be for this surface to make sense. Checked at startup. */
   preset: Preset;
-  snapshotOf(signals: readonly Signal[], now: Date): Snapshot;
+  /** `reporting` is the ids of the sources that answered this tick; most surfaces ignore it. */
+  snapshotOf(signals: readonly Signal[], now: Date, reporting: ReadonlySet<string>): Snapshot;
 };
 
 export const SURFACES: readonly SurfaceDefinition[] = [
@@ -55,8 +56,8 @@ export const SURFACES: readonly SurfaceDefinition[] = [
     id: "prod-health",
     label: "lit when production is broken",
     preset: "switch",
-    snapshotOf: (signals) => {
-      const state = reduceProdHealth(signals);
+    snapshotOf: (signals, _now, reporting) => {
+      const state = reduceProdHealth(signals, reporting);
       return { on: state.on, description: state.description };
     },
   },

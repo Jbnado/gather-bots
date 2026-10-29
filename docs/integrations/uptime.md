@@ -121,6 +121,6 @@ while the site is still down.
 | Object | Effect |
 |---|---|
 | Bot Status Monitor | `alert`, with the outage, how long it has been going and its cause (when the monitor sends one) in the feed |
-| Lightbulb on `prod-health` | lit while anything is down |
+| Lightbulb on `prod-health` | lit while anything is down; with no pipeline integration, its description reads "Nenhuma queda aberta" while nothing is down — never "healthy", since a monitor only knows about the checks it has |
 
 An outage counts as production by definition — nobody pages for staging.

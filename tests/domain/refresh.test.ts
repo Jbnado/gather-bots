@@ -115,4 +115,31 @@ describe("refresh", () => {
     expect(result.signals).toBe(0);
     expect(object.applied).toEqual([]);
   });
+
+  // Surfaces need to tell "this source answered with nothing" from "this source is not there":
+  // the first is evidence, the second is not.
+  test("tells the surface which sources answered this tick", async () => {
+    let seen: ReadonlySet<string> | undefined;
+    const target: SurfaceTarget = {
+      key: "probe",
+      object: new FakeSmartObject("probe"),
+      snapshotOf: (_signals, _now, reporting) => {
+        seen = reporting;
+        return { on: false };
+      },
+    };
+
+    await refresh({
+      sources: [
+        new FakeSource("uptime", []),
+        new FakeSource("azdo-builds", [], new Error("down")),
+      ],
+      targets: [target],
+      store: new InMemoryStateStore(),
+      now: NOW,
+    });
+
+    expect([...(seen ?? [])]).toEqual(["uptime"]);
+  });
 });
+
