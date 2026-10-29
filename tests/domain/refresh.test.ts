@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { refresh, type SurfaceTarget } from "../../src/domain/refresh.js";
 import { reduceInbox } from "../../src/domain/surfaces/inbox.js";
+import { findSurface } from "../../src/objects/registry.js";
+import {
+  applyIncident,
+  toIncidentSignals,
+  type IncidentState,
+} from "../../src/domain/incidents.js";
 import { FakeSmartObject, FakeSource, InMemoryStateStore } from "../support/fakes.js";
 import { signal } from "../support/signals.js";
 
@@ -114,5 +120,88 @@ describe("refresh", () => {
 
     expect(result.signals).toBe(0);
     expect(object.applied).toEqual([]);
+  });
+
+  // Surfaces need to tell "this source answered with nothing" from "this source is not there":
+  // the first is evidence, the second is not.
+  test("tells the surface which sources answered this tick", async () => {
+    let seen: ReadonlySet<string> | undefined;
+    const target: SurfaceTarget = {
+      key: "probe",
+      object: new FakeSmartObject("probe"),
+      snapshotOf: (_signals, _now, reporting) => {
+        seen = reporting;
+        return { on: false };
+      },
+    };
+
+    await refresh({
+      sources: [
+        new FakeSource("uptime", []),
+        new FakeSource("azdo-builds", [], new Error("down")),
+      ],
+      targets: [target],
+      store: new InMemoryStateStore(),
+      now: NOW,
+    });
+
+    expect([...(seen ?? [])]).toEqual(["uptime"]);
+  });
+
+  // End to end through the real surface: an uptime source that answers with nothing open makes
+  // the status monitor smile, and one that fails leaves it off.
+  test("the activity monitor smiles only while the uptime source answers", async () => {
+    const surface = findSurface("activity-monitor");
+    if (surface === undefined) throw new Error("activity-monitor surface missing");
+
+    async function stateWith(uptime: FakeSource) {
+      const object = new FakeSmartObject("status");
+      await refresh({
+        sources: [uptime, new FakeSource("azdo-prs", [])],
+        targets: [{ key: "status", object, snapshotOf: surface!.snapshotOf }],
+        store: new InMemoryStateStore(),
+        now: NOW,
+      });
+      return object.applied.find((c) => c.type === "status.set")?.data;
+    }
+
+    expect(await stateWith(new FakeSource("uptime", []))).toEqual({ state: "on" });
+    expect(await stateWith(new FakeSource("uptime", [], new Error("down")))).toEqual({
+      state: "off",
+    });
+  });
+
+  // End to end through both real surfaces, from the state file's point of view: a check that
+  // goes from down to slow turns the bulb off and the face from alert to question.
+  test("down then degraded turns the bulb off and the face to question", async () => {
+    const status = findSurface("activity-monitor");
+    const bulb = findSurface("prod-health");
+    if (status === undefined || bulb === undefined) throw new Error("surface missing");
+
+    const T0 = NOW.getTime();
+    const report = { id: "upwatch:1", title: "RPA / prod · api" };
+    const down = applyIncident({}, { ...report, status: "down" }, T0);
+    const slow = applyIncident(down, { ...report, status: "degraded" }, T0 + 60_000);
+
+    async function run(state: IncidentState) {
+      const statusObject = new FakeSmartObject("status");
+      const bulbObject = new FakeSmartObject("lightbulb");
+      await refresh({
+        sources: [new FakeSource("uptime", toIncidentSignals(state, NOW, { ttlHours: 24 }))],
+        targets: [
+          { key: "status", object: statusObject, snapshotOf: status!.snapshotOf },
+          { key: "lightbulb", object: bulbObject, snapshotOf: bulb!.snapshotOf },
+        ],
+        store: new InMemoryStateStore(),
+        now: NOW,
+      });
+      return {
+        face: statusObject.applied.find((c) => c.type === "status.set")?.data,
+        bulb: bulbObject.applied.find((c) => c.type === "switch.set_state")?.data,
+      };
+    }
+
+    expect(await run(down)).toMatchObject({ face: { state: "alert" }, bulb: { on: true } });
+    expect(await run(slow)).toMatchObject({ face: { state: "question" }, bulb: { on: false } });
   });
 });

@@ -8,7 +8,12 @@ export type SurfaceTarget = {
   /** Key under which this object's last-written snapshot is stored. */
   key: string;
   object: SmartObjectPort;
-  snapshotOf: (signals: readonly Signal[], now: Date) => Snapshot;
+  /**
+   * `reporting` holds the ids of the sources that answered this tick. A source that answered
+   * with nothing is evidence ("no outage is open"); one that is not configured, or failed, is not
+   * — and the signals alone cannot tell the two apart.
+   */
+  snapshotOf: (signals: readonly Signal[], now: Date, reporting: ReadonlySet<string>) => Snapshot;
 };
 
 export type RefreshDeps = {
@@ -60,10 +65,11 @@ export async function refresh(deps: RefreshDeps): Promise<RefreshResult> {
   if (succeeded.length === 0) return { signals: 0, commands: 0, failed };
 
   const signals = succeeded.flatMap((c) => c.signals);
+  const reporting: ReadonlySet<string> = new Set(succeeded.map((c) => c.id));
   let commands = 0;
 
   for (const target of deps.targets) {
-    const next = target.snapshotOf(signals, deps.now);
+    const next = target.snapshotOf(signals, deps.now, reporting);
     const previous = await deps.store.get(target.key);
     const pending = diff(previous, next);
 

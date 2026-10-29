@@ -156,4 +156,55 @@ describe("reduceStatus", () => {
     expect(state.state).toBe("alert");
     expect(state.activity.map((a) => a.id)).toEqual(["build:998", "gcal:b21"]);
   });
+
+  // The uptime source answering with nothing open is evidence that everything it watches is up,
+  // so the face can smile. "on" is the smiling state — the same one an all-green pipeline gets.
+  test("smiles when only the uptime source answered and nothing is down", () => {
+    expect(reduceStatus([], NOW, new Set(["uptime"])).state).toBe("on");
+  });
+
+  test("still alerts for an outage reported by the uptime source alone", () => {
+    const state = reduceStatus(
+      [signal("incident", { source: "uptime", state: "failed", environment: "prod" })],
+      NOW,
+      new Set(["uptime"]),
+    );
+
+    expect(state.state).toBe("alert");
+  });
+
+  // A failing uptime source is absent from the reporting set: its silence is not evidence, and
+  // the face must not smile on the strength of it.
+  test("stays off when the uptime source did not answer", () => {
+    expect(reduceStatus([], NOW, new Set(["azdo-prs"])).state).toBe("off");
+  });
+
+  // Slow is attention without alarm: "question", the same level a broken develop build gets.
+  // "working" would read as something in progress, and "alert" is kept for things that are down.
+  test("asks for attention when a check is slow", () => {
+    const state = reduceStatus(
+      [signal("slowdown", { id: "incident:upwatch:1", source: "uptime", environment: "prod", title: "RPA / prod · api · lento há 5min · latência 2300ms" })],
+      NOW,
+      new Set(["uptime"]),
+    );
+
+    expect(state.state).toBe("question");
+    expect(state.activity).toEqual([
+      { id: "incident:upwatch:1", text: "RPA / prod · api · lento há 5min · latência 2300ms" },
+    ]);
+  });
+
+  test("an outage outranks a slowdown, and both stay in the feed, the outage first", () => {
+    const state = reduceStatus(
+      [
+        signal("slowdown", { id: "slow", source: "uptime", environment: "prod" }),
+        signal("incident", { id: "down", source: "uptime", state: "failed", environment: "prod" }),
+      ],
+      NOW,
+      new Set(["uptime"]),
+    );
+
+    expect(state.state).toBe("alert");
+    expect(state.activity.map((a) => a.id)).toEqual(["down", "slow"]);
+  });
 });

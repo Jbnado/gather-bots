@@ -1,4 +1,5 @@
 import type { IncidentReport } from "../../domain/incidents.js";
+import type { Environment } from "../../domain/signal.js";
 
 /**
  * Each of these turns one vendor's notification into `IncidentReport[]`. They are the only place
@@ -81,6 +82,82 @@ export function fromUptimeRobot(body: Record<string, unknown>): IncidentReport[]
       status: alertType === "1" ? "down" : "up",
       title: text(body["monitorFriendlyName"]) ?? id,
       url: text(body["monitorURL"]),
+    },
+  ];
+}
+
+/** Only web addresses become links: TCP, DNS and ping targets are host names nobody can open. */
+function webAddress(value: unknown): string | undefined {
+  const target = text(value);
+  return target !== undefined && /^https?:\/\//i.test(target) ? target : undefined;
+}
+
+/** Group names that mean "not production". Matched against each segment of the group path. */
+const NON_PROD_SEGMENTS: ReadonlySet<string> = new Set([
+  "hml",
+  "homolog",
+  "homologacao",
+  "homologação",
+  "staging",
+  "stage",
+  "stg",
+  "dev",
+  "develop",
+  "development",
+  "test",
+  "teste",
+  "qa",
+  "sandbox",
+  "preview",
+]);
+
+/**
+ * A group like `RPA / hml` says the check watches staging. Anything else — no group, `RPA / prod`,
+ * `Sondas` — counts as prod: lighting the bulb for staging is noise, but missing prod is the
+ * failure this whole integration exists to prevent.
+ */
+function environmentOf(group: string | undefined): Environment {
+  const segments = (group ?? "").split("/").map((s) => s.trim().toLowerCase());
+  return segments.some((s) => NON_PROD_SEGMENTS.has(s)) ? "develop" : "prod";
+}
+
+/**
+ * upwatch's webhook channel, unmapped: the standard envelope it sends when no body template is
+ * configured. `group` is the monitor's group path ("RPA / prod"), empty when it has none.
+ */
+export function fromUpwatch(body: Record<string, unknown>): IncidentReport[] {
+  const monitorId = body["monitor_id"];
+  // A number on purpose: upwatch sends it as one, and accepting strings too would let "42" and
+  // 42 drift into two ids for the same monitor if the shape ever changed on either side.
+  if (typeof monitorId !== "number" || !Number.isFinite(monitorId)) {
+    throw new Error("missing monitor_id");
+  }
+  const id = `upwatch:${monitorId}`;
+
+  const status = text(body["status"]);
+
+  // Unknown is the absence of a result, which says nothing either way. Degraded is passed on as
+  // a slowdown rather than dropped: it shares the id, so down → degraded closes the outage.
+  if (status === "unknown") return [];
+  if (status !== "down" && status !== "up" && status !== "degraded") {
+    throw new Error(
+      `status must be "down", "up", "degraded" or "unknown", got ${JSON.stringify(body["status"])}`,
+    );
+  }
+
+  // Monitors tend to be called "api" or "front" inside a group; without the group the title
+  // would not say which system is down.
+  const monitor = text(body["monitor"]) ?? id;
+  const group = text(body["group"]);
+
+  return [
+    {
+      id,
+      status,
+      title: group === undefined ? monitor : `${group} · ${monitor}`,
+      url: webAddress(body["target"]),
+      detail: text(body["message"]),
+      environment: environmentOf(group),
     },
   ];
 }

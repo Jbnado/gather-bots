@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { applyIncident, toIncidentSignals } from "../../src/domain/incidents.js";
+import { reduceProdHealth } from "../../src/domain/surfaces/prod-health.js";
+import { reduceStatus } from "../../src/domain/surfaces/status.js";
 
 const T0 = Date.parse("2026-07-30T12:00:00Z");
 const later = (minutes: number) => T0 + minutes * 60_000;
@@ -74,4 +76,95 @@ describe("toIncidentSignals", () => {
 
     expect(signal?.title).toBe("API production · fora há 1h30");
   });
+
+  // The cause is what tells people whether to drop everything: "timeout" and "500" are different
+  // conversations.
+  test("appends the cause to the title when the monitor sent one", () => {
+    const state = applyIncident({}, { ...down, detail: "connection refused" }, T0);
+    const [signal] = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(signal?.title).toBe("API production · fora há 5min · connection refused");
+  });
+
+  // Staging going down is worth seeing, not worth the alarm: the feed shows it, the TV asks
+  // instead of alerting, and the prod bulb stays dark.
+  test("a staging outage shows on the feed without lighting the prod bulb", () => {
+    const state = applyIncident({}, { ...down, environment: "develop" }, T0);
+    const signals = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(signals[0]).toMatchObject({ state: "failed", environment: "develop" });
+    expect(reduceProdHealth(signals, new Set(["uptime"])).on).toBe(false);
+    expect(reduceStatus(signals, new Date(later(5)), new Set(["uptime"])).state).toBe("question");
+  });
+
+  test("a prod outage still lights the bulb and alerts", () => {
+    const state = applyIncident({}, down, T0);
+    const signals = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(reduceProdHealth(signals, new Set(["uptime"])).on).toBe(true);
+    expect(reduceStatus(signals, new Date(later(5)), new Set(["uptime"])).state).toBe("alert");
+  });
+
+  // State files written before environments existed carry no field, and must keep reading as prod.
+  test("stores nothing for prod, so old state files still mean prod", () => {
+    expect(applyIncident({}, down, T0)["api-prod"]?.environment).toBeUndefined();
+    expect(applyIncident({}, { ...down, environment: "prod" }, T0)["api-prod"]?.environment).toBeUndefined();
+  });
+
+  test("shows the latest cause when the outage is reported again", () => {
+    const opened = applyIncident({}, { ...down, detail: "timeout" }, T0);
+    const repeated = applyIncident(opened, { ...down, detail: "HTTP 502" }, later(5));
+
+    expect(repeated["api-prod"]?.detail).toBe("HTTP 502");
+  });
 });
+
+// Slow is not down. A slowdown shares the check's id with its outage, so each transition replaces
+// the other — a check is down, slow or fine, never two at once.
+describe("slowdowns", () => {
+  const slow = { ...down, status: "degraded" as const, detail: "latência 2300ms" };
+
+  test("down then degraded closes the outage and opens a slowdown", () => {
+    const opened = applyIncident({}, down, T0);
+    const slowed = applyIncident(opened, slow, later(10));
+
+    expect(slowed["api-prod"]).toMatchObject({ severity: "degraded", since: later(10) });
+  });
+
+  test("degraded then down closes the slowdown and opens an outage", () => {
+    const slowed = applyIncident({}, slow, T0);
+    const opened = applyIncident(slowed, down, later(10));
+
+    expect(opened["api-prod"]?.severity).toBeUndefined();
+    expect(opened["api-prod"]?.since).toBe(later(10));
+  });
+
+  test("degraded then up closes the slowdown", () => {
+    const slowed = applyIncident({}, slow, T0);
+
+    expect(applyIncident(slowed, { ...down, status: "up" }, later(5))["api-prod"]).toBeUndefined();
+  });
+
+  test("keeps the start of a slowdown that is reported again", () => {
+    const slowed = applyIncident({}, slow, T0);
+
+    expect(applyIncident(slowed, slow, later(30))["api-prod"]?.since).toBe(T0);
+  });
+
+  test("emits a slowdown signal that is not a failure", () => {
+    const state = applyIncident({}, slow, T0);
+    const [signal] = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(signal).toMatchObject({ id: "incident:api-prod", kind: "slowdown", environment: "prod" });
+    expect(signal?.state).toBeUndefined();
+    expect(signal?.title).toBe("API production · lento há 5min · latência 2300ms");
+  });
+
+  // A forgotten slowdown would hold the attention face forever, exactly like a forgotten outage.
+  test("ages out like an outage", () => {
+    const state = applyIncident({}, slow, T0);
+
+    expect(toIncidentSignals(state, new Date(later(25 * 60)), { ttlHours: 24 })).toEqual([]);
+  });
+});
+

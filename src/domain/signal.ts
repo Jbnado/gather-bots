@@ -21,7 +21,9 @@ export type SignalKind =
   | "build"
   | "release"
   /** Something an uptime monitor says is down. */
-  | "incident";
+  | "incident"
+  /** Something an uptime monitor says is answering, but slowly. Not an outage. */
+  | "slowdown";
 
 export type RunState = "running" | "succeeded" | "failed";
 
