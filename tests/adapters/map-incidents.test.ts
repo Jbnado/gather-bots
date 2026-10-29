@@ -165,10 +165,17 @@ describe("fromUpwatch", () => {
     expect(fromUpwatch({ ...envelope, group: "" })[0]?.title).toBe("api");
   });
 
-  // Degraded still answers, and unknown is the absence of a result — neither is an outage, and
-  // lighting the object for them would train people to ignore it.
-  test.each(["degraded", "unknown"])("ignores %s on purpose", (status) => {
-    expect(fromUpwatch({ ...envelope, status })).toEqual([]);
+  // Slow is not down: it is reported under the same id, so a check that goes from down to slow
+  // closes the outage instead of leaving it open beside the slowness.
+  test("maps degraded to a slowdown under the same id", () => {
+    const [report] = fromUpwatch({ ...envelope, status: "degraded", message: "latência 2300ms" });
+
+    expect(report).toMatchObject({ id: "upwatch:42", status: "degraded", detail: "latência 2300ms" });
+  });
+
+  // Unknown is the absence of a result, which says nothing about the check either way.
+  test("ignores unknown on purpose", () => {
+    expect(fromUpwatch({ ...envelope, status: "unknown" })).toEqual([]);
   });
 
   test("rejects a status it does not know", () => {

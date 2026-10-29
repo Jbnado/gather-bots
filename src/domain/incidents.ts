@@ -4,7 +4,8 @@ import type { Signal } from "./signal.js";
 export type IncidentReport = {
   /** Stable per monitored check — the same check reporting again must reuse it. */
   id: string;
-  status: "down" | "up";
+  /** `degraded` is slow, not down: it answers, but outside what is acceptable. */
+  status: "down" | "up" | "degraded";
   title: string;
   url?: string | undefined;
   /** Why the monitor thinks it is down, when it says — "timeout" and "HTTP 502" call for different people. */
@@ -12,6 +13,11 @@ export type IncidentReport = {
 };
 
 export type OpenIncident = {
+  /**
+   * Absent means an outage, so state files written before slowdowns existed still read right.
+   * One entry per check: a check is down, slow or fine, never two at once.
+   */
+  severity?: "degraded";
   title: string;
   url?: string;
   /** The latest cause reported; unlike `since`, a repeat replaces it, since the cause can change mid-outage. */
@@ -43,8 +49,12 @@ export function applyIncident(
     return next;
   }
 
-  const existing = next[report.id];
+  const severity = report.status === "degraded" ? "degraded" : undefined;
+  // Going from down to slow (or back) ends one problem and starts another, so the clock restarts;
+  // only a repeat of the same problem keeps it.
+  const existing = next[report.id]?.severity === severity ? next[report.id] : undefined;
   next[report.id] = {
+    ...(severity === undefined ? {} : { severity }),
     title: report.title,
     ...(report.url === undefined ? {} : { url: report.url }),
     ...(report.detail === undefined ? {} : { detail: report.detail }),
@@ -82,21 +92,24 @@ export function toIncidentSignals(
 
   return Object.entries(state)
     .filter(([, incident]) => now.getTime() - incident.lastSeen <= ttlMs)
-    .map(([id, incident]) => ({
+    .map(([id, incident]): Signal => ({
       id: `incident:${id}`,
-      source: "uptime" as const,
-      kind: "incident" as const,
+      source: "uptime",
+      // A slowdown is not a failure: it carries no state, so nothing that counts failures —
+      // the prod-health bulb included — mistakes it for an outage.
+      ...(incident.severity === "degraded"
+        ? { kind: "slowdown" as const }
+        : { kind: "incident" as const, state: "failed" as const }),
       // Surfaces only render a line of text per entry, so the cause rides on the title; the
       // feed truncates, which is why it goes last.
       title: [
         incident.title,
-        `fora há ${humanDuration(now.getTime() - incident.since)}`,
+        `${incident.severity === "degraded" ? "lento" : "fora"} há ${humanDuration(now.getTime() - incident.since)}`,
         ...(incident.detail === undefined ? [] : [incident.detail]),
       ].join(" · "),
       ...(incident.url === undefined ? {} : { url: incident.url }),
-      state: "failed" as const,
       // An uptime monitor watches production by definition; nobody pages on staging being down.
-      environment: "prod" as const,
+      environment: "prod",
       since: new Date(incident.since),
     }));
 }

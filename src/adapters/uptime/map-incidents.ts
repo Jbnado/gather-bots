@@ -106,10 +106,10 @@ export function fromUpwatch(body: Record<string, unknown>): IncidentReport[] {
 
   const status = text(body["status"]);
 
-  // Degraded still answers, and unknown is the absence of a result — neither is an outage, for
-  // the same reason UptimeRobot's SSL warning is not one.
-  if (status === "degraded" || status === "unknown") return [];
-  if (status !== "down" && status !== "up") {
+  // Unknown is the absence of a result, which says nothing either way. Degraded is passed on as
+  // a slowdown rather than dropped: it shares the id, so down → degraded closes the outage.
+  if (status === "unknown") return [];
+  if (status !== "down" && status !== "up" && status !== "degraded") {
     throw new Error(
       `status must be "down", "up", "degraded" or "unknown", got ${JSON.stringify(body["status"])}`,
     );
