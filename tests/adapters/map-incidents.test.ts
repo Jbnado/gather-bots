@@ -134,7 +134,7 @@ describe("fromUpwatch", () => {
     message: "connection refused",
     at: "2026-10-28T12:00:00Z",
     duration_seconds: 0,
-    group: "RPA/prod",
+    group: "RPA / prod",
   };
 
   test("maps a down notification to an outage", () => {
@@ -142,7 +142,7 @@ describe("fromUpwatch", () => {
       {
         id: "upwatch:42",
         status: "down",
-        title: "RPA/prod · api",
+        title: "RPA / prod · api",
         url: "https://api.example.com/health",
         detail: "connection refused",
       },

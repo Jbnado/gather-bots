@@ -70,7 +70,7 @@ In [upwatch](https://github.com/Jbnado/upwatch), create a channel of type **Webh
 - Header: `x-webhook-token: <token>`
 - Leave the body mapping (`body_template`) **empty**. This route reads upwatch's standard
   envelope as is: `monitor`, `monitor_id`, `status`, `target`, `message` and, when the monitor
-  belongs to one, `group` (its path, e.g. `RPA/prod`).
+  belongs to one, `group` (its path, e.g. `RPA / prod`).
 
 Then attach the channel **only to the production groups, and to the group holding the probes**.
 Every notification that reaches this route is treated as production — that is the contract of the

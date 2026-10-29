@@ -96,11 +96,11 @@ describe("createWebhookServer", () => {
       monitor_id: 7,
       status: "down",
       message: "timeout",
-      group: "RPA/prod",
+      group: "RPA / prod",
     });
 
     expect(res.status).toBe(202);
-    expect(received[0]).toMatchObject({ id: "upwatch:7", status: "down", title: "RPA/prod · api" });
+    expect(received[0]).toMatchObject({ id: "upwatch:7", status: "down", title: "RPA / prod · api" });
   });
 
   // A monitor with a broken template should get a clear 400, not a 500 that looks like our fault.

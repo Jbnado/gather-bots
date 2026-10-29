@@ -93,7 +93,7 @@ function webAddress(value: unknown): string | undefined {
 
 /**
  * upwatch's webhook channel, unmapped: the standard envelope it sends when no body template is
- * configured. `group` is the monitor's group path ("RPA/prod"), empty when it has none.
+ * configured. `group` is the monitor's group path ("RPA / prod"), empty when it has none.
  */
 export function fromUpwatch(body: Record<string, unknown>): IncidentReport[] {
   const monitorId = body["monitor_id"];
