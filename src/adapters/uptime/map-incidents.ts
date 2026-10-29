@@ -1,4 +1,5 @@
 import type { IncidentReport } from "../../domain/incidents.js";
+import type { Environment } from "../../domain/signal.js";
 
 /**
  * Each of these turns one vendor's notification into `IncidentReport[]`. They are the only place
@@ -91,6 +92,35 @@ function webAddress(value: unknown): string | undefined {
   return target !== undefined && /^https?:\/\//i.test(target) ? target : undefined;
 }
 
+/** Group names that mean "not production". Matched against each segment of the group path. */
+const NON_PROD_SEGMENTS: ReadonlySet<string> = new Set([
+  "hml",
+  "homolog",
+  "homologacao",
+  "homologação",
+  "staging",
+  "stage",
+  "stg",
+  "dev",
+  "develop",
+  "development",
+  "test",
+  "teste",
+  "qa",
+  "sandbox",
+  "preview",
+]);
+
+/**
+ * A group like `RPA / hml` says the check watches staging. Anything else — no group, `RPA / prod`,
+ * `Sondas` — counts as prod: lighting the bulb for staging is noise, but missing prod is the
+ * failure this whole integration exists to prevent.
+ */
+function environmentOf(group: string | undefined): Environment {
+  const segments = (group ?? "").split("/").map((s) => s.trim().toLowerCase());
+  return segments.some((s) => NON_PROD_SEGMENTS.has(s)) ? "develop" : "prod";
+}
+
 /**
  * upwatch's webhook channel, unmapped: the standard envelope it sends when no body template is
  * configured. `group` is the monitor's group path ("RPA / prod"), empty when it has none.
@@ -127,6 +157,7 @@ export function fromUpwatch(body: Record<string, unknown>): IncidentReport[] {
       title: group === undefined ? monitor : `${group} · ${monitor}`,
       url: webAddress(body["target"]),
       detail: text(body["message"]),
+      environment: environmentOf(group),
     },
   ];
 }

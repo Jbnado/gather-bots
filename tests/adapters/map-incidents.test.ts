@@ -145,8 +145,26 @@ describe("fromUpwatch", () => {
         title: "RPA / prod · api",
         url: "https://api.example.com/health",
         detail: "connection refused",
+        environment: "prod",
       },
     ]);
+  });
+
+  // A staging check still reaches the feed, but must not light the prod bulb.
+  test("reads the environment from the group path", () => {
+    expect(fromUpwatch({ ...envelope, group: "RPA / hml" })[0]?.environment).toBe("develop");
+    expect(fromUpwatch({ ...envelope, group: "Retaguarda/Staging" })[0]?.environment).toBe("develop");
+    expect(fromUpwatch({ ...envelope, group: "Sondas / hml" })[0]?.environment).toBe("develop");
+  });
+
+  // Silence about the environment is not evidence of staging: missing prod is the worse mistake.
+  test("treats any other group, or none, as prod", () => {
+    const { group: _, ...withoutGroup } = envelope;
+
+    expect(fromUpwatch(withoutGroup)[0]?.environment).toBe("prod");
+    expect(fromUpwatch({ ...envelope, group: "Sondas" })[0]?.environment).toBe("prod");
+    // Only whole segments count: "Devolucoes" is not "dev".
+    expect(fromUpwatch({ ...envelope, group: "Devolucoes / prod" })[0]?.environment).toBe("prod");
   });
 
   // Recovery must land on the same id as the outage, or the light never goes out.

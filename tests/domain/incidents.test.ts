@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { applyIncident, toIncidentSignals } from "../../src/domain/incidents.js";
+import { reduceProdHealth } from "../../src/domain/surfaces/prod-health.js";
+import { reduceStatus } from "../../src/domain/surfaces/status.js";
 
 const T0 = Date.parse("2026-07-30T12:00:00Z");
 const later = (minutes: number) => T0 + minutes * 60_000;
@@ -82,6 +84,31 @@ describe("toIncidentSignals", () => {
     const [signal] = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
 
     expect(signal?.title).toBe("API production · fora há 5min · connection refused");
+  });
+
+  // Staging going down is worth seeing, not worth the alarm: the feed shows it, the TV asks
+  // instead of alerting, and the prod bulb stays dark.
+  test("a staging outage shows on the feed without lighting the prod bulb", () => {
+    const state = applyIncident({}, { ...down, environment: "develop" }, T0);
+    const signals = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(signals[0]).toMatchObject({ state: "failed", environment: "develop" });
+    expect(reduceProdHealth(signals, new Set(["uptime"])).on).toBe(false);
+    expect(reduceStatus(signals, new Date(later(5)), new Set(["uptime"])).state).toBe("question");
+  });
+
+  test("a prod outage still lights the bulb and alerts", () => {
+    const state = applyIncident({}, down, T0);
+    const signals = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(reduceProdHealth(signals, new Set(["uptime"])).on).toBe(true);
+    expect(reduceStatus(signals, new Date(later(5)), new Set(["uptime"])).state).toBe("alert");
+  });
+
+  // State files written before environments existed carry no field, and must keep reading as prod.
+  test("stores nothing for prod, so old state files still mean prod", () => {
+    expect(applyIncident({}, down, T0)["api-prod"]?.environment).toBeUndefined();
+    expect(applyIncident({}, { ...down, environment: "prod" }, T0)["api-prod"]?.environment).toBeUndefined();
   });
 
   test("shows the latest cause when the outage is reported again", () => {

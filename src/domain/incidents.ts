@@ -1,4 +1,4 @@
-import type { Signal } from "./signal.js";
+import type { Environment, Signal } from "./signal.js";
 
 /** What an uptime monitor tells us, once mapped out of whatever shape it sent. */
 export type IncidentReport = {
@@ -10,6 +10,8 @@ export type IncidentReport = {
   url?: string | undefined;
   /** Why the monitor thinks it is down, when it says — "timeout" and "HTTP 502" call for different people. */
   detail?: string | undefined;
+  /** Absent means prod: a monitor that does not say which environment it watches is assumed to watch the one that matters. */
+  environment?: Environment | undefined;
 };
 
 export type OpenIncident = {
@@ -22,6 +24,8 @@ export type OpenIncident = {
   url?: string;
   /** The latest cause reported; unlike `since`, a repeat replaces it, since the cause can change mid-outage. */
   detail?: string;
+  /** Only stored when it is not prod, so state files written before environments existed still read as prod. */
+  environment?: "develop";
   /** When the outage was first reported; repeats do not move it. */
   since: number;
   /** Last time the monitor said anything about this check — what the TTL measures. */
@@ -58,6 +62,7 @@ export function applyIncident(
     title: report.title,
     ...(report.url === undefined ? {} : { url: report.url }),
     ...(report.detail === undefined ? {} : { detail: report.detail }),
+    ...(report.environment === "develop" ? { environment: "develop" as const } : {}),
     since: existing?.since ?? now,
     lastSeen: now,
   };
@@ -108,8 +113,9 @@ export function toIncidentSignals(
         ...(incident.detail === undefined ? [] : [incident.detail]),
       ].join(" · "),
       ...(incident.url === undefined ? {} : { url: incident.url }),
-      // An uptime monitor watches production by definition; nobody pages on staging being down.
-      environment: "prod",
+      // Staging shows on the feed but does not light the prod bulb; anything not marked otherwise
+      // is prod, since the quiet mistake is the dangerous one.
+      environment: incident.environment ?? "prod",
       since: new Date(incident.since),
     }));
 }

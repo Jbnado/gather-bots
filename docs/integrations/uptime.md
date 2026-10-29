@@ -72,9 +72,20 @@ In [upwatch](https://github.com/Jbnado/upwatch), create a channel of type **Webh
   envelope as is: `monitor`, `monitor_id`, `status`, `target`, `message` and, when the monitor
   belongs to one, `group` (its path, e.g. `RPA / prod`).
 
-Then attach the channel **only to the production groups, and to the group holding the probes**.
-Every notification that reaches this route is treated as production — that is the contract of the
-whole integration — so a channel attached to a staging group would light the bulb for staging.
+Attach the channel to every group you want to see. The environment comes from the group path:
+when any segment of it is a staging name (`hml`, `homolog`, `homologacao`, `staging`, `stage`,
+`stg`, `dev`, `develop`, `development`, `test`, `teste`, `qa`, `sandbox`, `preview`, case
+ignored), the check counts as staging — `RPA / hml`, `Sondas / hml`. Anything else, including no
+group at all, counts as **production**: missing prod is worse than a bulb lit by mistake.
+
+| Environment | Bot Status Monitor | Prod bulb |
+|---|---|---|
+| production, down | `alert` | lit |
+| staging, down | `question` | dark |
+| either, slow | `question` | dark |
+
+All of them show in the feed. A probe for a staging VM belongs under a staging group too
+(`Sondas / hml`), or its silence lights the prod bulb.
 
 The id is `upwatch:<monitor_id>`, so renaming a monitor or moving it between groups does not
 orphan an open outage. Any status other than the four below gets a 400.
@@ -130,7 +141,7 @@ while the site is still down.
 
 | Object | Effect |
 |---|---|
-| Bot Status Monitor | `alert` while anything is down, `question` while something is only slow (upwatch's `degraded`), each with the check, how long it has been going and its cause in the feed; `on` (the smiling face) while the monitor answers with nothing open, even with no other integration — but `off` if this integration is failing, since silence is not evidence |
-| Lightbulb on `prod-health` | lit while anything is down, and **not** for a slowdown; with no pipeline integration, its description reads "Nenhuma queda aberta" while nothing is down — never "healthy", since a monitor only knows about the checks it has |
+| Bot Status Monitor | `alert` while anything in production is down, `question` while something is only slow or down in staging (upwatch's `degraded`), each with the check, how long it has been going and its cause in the feed; `on` (the smiling face) while the monitor answers with nothing open, even with no other integration — but `off` if this integration is failing, since silence is not evidence |
+| Lightbulb on `prod-health` | lit while anything in production is down, and **not** for a slowdown or for staging; with no pipeline integration, its description reads "Nenhuma queda aberta" while nothing is down — never "healthy", since a monitor only knows about the checks it has |
 
 An outage counts as production by definition — nobody pages for staging.
