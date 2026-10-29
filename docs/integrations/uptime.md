@@ -77,9 +77,19 @@ Every notification that reaches this route is treated as production — that is 
 whole integration — so a channel attached to a staging group would light the bulb for staging.
 
 The id is `upwatch:<monitor_id>`, so renaming a monitor or moving it between groups does not
-orphan an open outage. `down` opens, `up` closes, and `degraded` and `unknown` are **ignored on
-purpose**: a degraded check still answers and unknown is the absence of a result — neither is an
-outage, for the same reason UptimeRobot's SSL warning is not one. Any other status gets a 400.
+orphan an open outage. Any status other than the four below gets a 400.
+
+| upwatch status | Effect |
+|---|---|
+| `down` | opens an outage |
+| `degraded` | opens a **slowdown** — slow is not down |
+| `up` | closes whatever is open for that check |
+| `unknown` | **ignored on purpose**: the absence of a result says nothing either way |
+
+Outage and slowdown share the check's id, so a check is down, slow or fine, never two at once:
+`down → degraded` closes the outage (the bulb goes dark) and opens a slowdown, `degraded → down`
+does the reverse, and each switch restarts the "for how long" clock. A slowdown is persisted and
+ages out under `UPTIME_TTL_HOURS` exactly like an outage.
 
 The title is `<group> · <monitor>` (just the monitor when it has no group): monitors are usually
 called `api` or `front`, and the group is what says which system is down. upwatch's `message`
@@ -120,7 +130,7 @@ while the site is still down.
 
 | Object | Effect |
 |---|---|
-| Bot Status Monitor | `alert`, with the outage, how long it has been going and its cause (when the monitor sends one) in the feed; `on` (the smiling face) while the monitor answers with nothing down, even with no other integration — but `off` if this integration is failing, since silence is not evidence |
-| Lightbulb on `prod-health` | lit while anything is down; with no pipeline integration, its description reads "Nenhuma queda aberta" while nothing is down — never "healthy", since a monitor only knows about the checks it has |
+| Bot Status Monitor | `alert` while anything is down, `question` while something is only slow (upwatch's `degraded`), each with the check, how long it has been going and its cause in the feed; `on` (the smiling face) while the monitor answers with nothing open, even with no other integration — but `off` if this integration is failing, since silence is not evidence |
+| Lightbulb on `prod-health` | lit while anything is down, and **not** for a slowdown; with no pipeline integration, its description reads "Nenhuma queda aberta" while nothing is down — never "healthy", since a monitor only knows about the checks it has |
 
 An outage counts as production by definition — nobody pages for staging.

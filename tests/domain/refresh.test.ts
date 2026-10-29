@@ -2,6 +2,11 @@ import { describe, expect, test } from "vitest";
 import { refresh, type SurfaceTarget } from "../../src/domain/refresh.js";
 import { reduceInbox } from "../../src/domain/surfaces/inbox.js";
 import { findSurface } from "../../src/objects/registry.js";
+import {
+  applyIncident,
+  toIncidentSignals,
+  type IncidentState,
+} from "../../src/domain/incidents.js";
 import { FakeSmartObject, FakeSource, InMemoryStateStore } from "../support/fakes.js";
 import { signal } from "../support/signals.js";
 
@@ -165,5 +170,38 @@ describe("refresh", () => {
       state: "off",
     });
   });
-});
 
+  // End to end through both real surfaces, from the state file's point of view: a check that
+  // goes from down to slow turns the bulb off and the face from alert to question.
+  test("down then degraded turns the bulb off and the face to question", async () => {
+    const status = findSurface("activity-monitor");
+    const bulb = findSurface("prod-health");
+    if (status === undefined || bulb === undefined) throw new Error("surface missing");
+
+    const T0 = NOW.getTime();
+    const report = { id: "upwatch:1", title: "RPA / prod · api" };
+    const down = applyIncident({}, { ...report, status: "down" }, T0);
+    const slow = applyIncident(down, { ...report, status: "degraded" }, T0 + 60_000);
+
+    async function run(state: IncidentState) {
+      const statusObject = new FakeSmartObject("status");
+      const bulbObject = new FakeSmartObject("lightbulb");
+      await refresh({
+        sources: [new FakeSource("uptime", toIncidentSignals(state, NOW, { ttlHours: 24 }))],
+        targets: [
+          { key: "status", object: statusObject, snapshotOf: status!.snapshotOf },
+          { key: "lightbulb", object: bulbObject, snapshotOf: bulb!.snapshotOf },
+        ],
+        store: new InMemoryStateStore(),
+        now: NOW,
+      });
+      return {
+        face: statusObject.applied.find((c) => c.type === "status.set")?.data,
+        bulb: bulbObject.applied.find((c) => c.type === "switch.set_state")?.data,
+      };
+    }
+
+    expect(await run(down)).toMatchObject({ face: { state: "alert" }, bulb: { on: true } });
+    expect(await run(slow)).toMatchObject({ face: { state: "question" }, bulb: { on: false } });
+  });
+});

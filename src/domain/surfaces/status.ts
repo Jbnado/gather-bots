@@ -13,6 +13,7 @@ const RUNS_WITHOUT_ME: ReadonlySet<SignalKind> = new Set<SignalKind>([
   "release",
   "calendar_event",
   "incident",
+  "slowdown",
 ]);
 
 /** A meeting starting this soon is worth a heads-up. */
@@ -51,10 +52,11 @@ function hasConflict(events: readonly Signal[], now: Date): boolean {
  */
 function rank(signal: Signal, now: Date): number {
   if (signal.state === "failed") return 0;
-  if (signal.state === "running") return 1;
-  if (isHappeningNow(signal, now)) return 2;
-  if (isUpcoming(signal, now)) return 3;
-  return 4;
+  if (signal.kind === "slowdown") return 1;
+  if (signal.state === "running") return 2;
+  if (isHappeningNow(signal, now)) return 3;
+  if (isUpcoming(signal, now)) return 4;
+  return 5;
 }
 
 /**
@@ -105,7 +107,9 @@ function level(
   const failed = relevant.filter((s) => s.state === "failed");
 
   if (failed.some((s) => s.environment !== "develop") || hasConflict(events, now)) return "alert";
-  if (failed.length > 0) return "question";
+  // Slow is attention without alarm. "question" rather than "working": the timer face reads as
+  // something in progress that will end by itself, and a slow production check will not.
+  if (failed.length > 0 || relevant.some((s) => s.kind === "slowdown")) return "question";
 
   if (relevant.some((s) => s.state === "running") || events.some((e) => isHappeningNow(e, now))) {
     return "working";

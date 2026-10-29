@@ -85,5 +85,15 @@ describe("reduceProdHealth", () => {
 
     expect(state.description).toBe("Sem dados de pipeline");
   });
-});
 
+  // Slow is not down: the bulb means production is broken, and a slow check is not.
+  test("stays dark for a slowdown", () => {
+    const state = reduceProdHealth(
+      [signal("slowdown", { source: "uptime", environment: "prod", title: "api" })],
+      new Set(["uptime"]),
+    );
+
+    expect(state.on).toBe(false);
+    expect(state.description).toBe("Nenhuma queda aberta");
+  });
+});
