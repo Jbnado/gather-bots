@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { IncidentReport } from "../../domain/incidents.js";
-import { fromGeneric, fromGrafana, fromUptimeRobot } from "./map-incidents.js";
+import { fromGeneric, fromGrafana, fromUpwatch, fromUptimeRobot } from "./map-incidents.js";
 
 /** Refuse a body larger than this rather than buffering whatever an unauthenticated caller sends. */
 const MAX_BODY_BYTES = 64 * 1024;
@@ -35,7 +35,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/** UptimeRobot posts form fields; Grafana and the generic contract post JSON. */
+/** UptimeRobot posts form fields; everything else posts JSON. */
 function parseBody(raw: string, contentType: string | undefined): Record<string, unknown> {
   if (contentType?.includes("application/x-www-form-urlencoded")) {
     return Object.fromEntries(new URLSearchParams(raw));
@@ -49,6 +49,7 @@ const ROUTES: Record<string, (body: Record<string, unknown>) => IncidentReport[]
   "/incidents": fromGeneric,
   "/incidents/grafana": (body) => fromGrafana(body as { alerts?: [] }),
   "/incidents/uptimerobot": fromUptimeRobot,
+  "/incidents/upwatch": fromUpwatch,
 };
 
 /**

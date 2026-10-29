@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   fromGeneric,
   fromGrafana,
+  fromUpwatch,
   fromUptimeRobot,
 } from "../../src/adapters/uptime/map-incidents.js";
 
@@ -118,5 +119,75 @@ describe("fromUptimeRobot", () => {
 
   test("rejects a payload with no monitor id", () => {
     expect(() => fromUptimeRobot({ alertType: "1" })).toThrow(/monitorID/);
+  });
+});
+
+describe("fromUpwatch", () => {
+  // The envelope upwatch's webhook channel sends when no body mapping is configured.
+  const envelope = {
+    text: "api caiu",
+    monitor: "api",
+    monitor_id: 42,
+    target: "https://api.example.com/health",
+    status: "down",
+    previous_status: "up",
+    message: "connection refused",
+    at: "2026-10-28T12:00:00Z",
+    duration_seconds: 0,
+    group: "RPA/prod",
+  };
+
+  test("maps a down notification to an outage", () => {
+    expect(fromUpwatch(envelope)).toEqual([
+      {
+        id: "upwatch:42",
+        status: "down",
+        title: "RPA/prod · api",
+        url: "https://api.example.com/health",
+        detail: "connection refused",
+      },
+    ]);
+  });
+
+  // Recovery must land on the same id as the outage, or the light never goes out.
+  test("maps up to a recovery under the same id", () => {
+    const [report] = fromUpwatch({ ...envelope, status: "up", previous_status: "down" });
+
+    expect(report).toMatchObject({ id: "upwatch:42", status: "up" });
+  });
+
+  // Monitors are usually named "api" or "front" inside a group; without the group the title
+  // would not say which system is down.
+  test("uses the monitor name alone when there is no group", () => {
+    const { group: _, ...withoutGroup } = envelope;
+
+    expect(fromUpwatch(withoutGroup)[0]?.title).toBe("api");
+    expect(fromUpwatch({ ...envelope, group: "" })[0]?.title).toBe("api");
+  });
+
+  // Degraded still answers, and unknown is the absence of a result — neither is an outage, and
+  // lighting the object for them would train people to ignore it.
+  test.each(["degraded", "unknown"])("ignores %s on purpose", (status) => {
+    expect(fromUpwatch({ ...envelope, status })).toEqual([]);
+  });
+
+  test("rejects a status it does not know", () => {
+    expect(() => fromUpwatch({ ...envelope, status: "flapping" })).toThrow(/status/);
+  });
+
+  test("rejects a payload with no numeric monitor id", () => {
+    const { monitor_id: _, ...withoutId } = envelope;
+
+    expect(() => fromUpwatch(withoutId)).toThrow(/monitor_id/);
+    expect(() => fromUpwatch({ ...envelope, monitor_id: "42" })).toThrow(/monitor_id/);
+  });
+
+  // TCP, DNS and ping targets are host names, not pages anyone can open from the feed.
+  test("only links the target when it is a web address", () => {
+    expect(fromUpwatch({ ...envelope, target: "db.internal:1521" })[0]?.url).toBeUndefined();
+  });
+
+  test("omits the detail when there is no message", () => {
+    expect(fromUpwatch({ ...envelope, message: "" })[0]?.detail).toBeUndefined();
   });
 });

@@ -58,6 +58,34 @@ encoding is handled. `alertType` 1 opens, 2 closes, and 3 (SSL expiring) is **ig
 purpose** — it is real, but it is not an outage, and lighting the object for it teaches everyone
 to ignore the object.
 
+### upwatch
+
+```
+POST /incidents/upwatch
+```
+
+In [upwatch](https://github.com/Jbnado/upwatch), create a channel of type **Webhook**:
+
+- URL: `http://<host>:8787/incidents/upwatch`
+- Header: `x-webhook-token: <token>`
+- Leave the body mapping (`body_template`) **empty**. This route reads upwatch's standard
+  envelope as is: `monitor`, `monitor_id`, `status`, `target`, `message` and, when the monitor
+  belongs to one, `group` (its path, e.g. `RPA/prod`).
+
+Then attach the channel **only to the production groups, and to the group holding the probes**.
+Every notification that reaches this route is treated as production — that is the contract of the
+whole integration — so a channel attached to a staging group would light the bulb for staging.
+
+The id is `upwatch:<monitor_id>`, so renaming a monitor or moving it between groups does not
+orphan an open outage. `down` opens, `up` closes, and `degraded` and `unknown` are **ignored on
+purpose**: a degraded check still answers and unknown is the absence of a result — neither is an
+outage, for the same reason UptimeRobot's SSL warning is not one. Any other status gets a 400.
+
+The title is `<group> · <monitor>` (just the monitor when it has no group): monitors are usually
+called `api` or `front`, and the group is what says which system is down. upwatch's `message`
+(the cause, e.g. `connection refused`) goes after the duration in the feed, and the `target`
+becomes the entry's link when it is a web address.
+
 ## Exposing it
 
 The service listens on plain HTTP with no TLS of its own. Put it behind whatever already
@@ -92,7 +120,7 @@ while the site is still down.
 
 | Object | Effect |
 |---|---|
-| Bot Status Monitor | `alert`, with the outage and how long it has been going in the feed |
+| Bot Status Monitor | `alert`, with the outage, how long it has been going and its cause (when the monitor sends one) in the feed |
 | Lightbulb on `prod-health` | lit while anything is down |
 
 An outage counts as production by definition — nobody pages for staging.

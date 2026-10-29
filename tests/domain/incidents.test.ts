@@ -74,4 +74,20 @@ describe("toIncidentSignals", () => {
 
     expect(signal?.title).toBe("API production · fora há 1h30");
   });
+
+  // The cause is what tells people whether to drop everything: "timeout" and "500" are different
+  // conversations.
+  test("appends the cause to the title when the monitor sent one", () => {
+    const state = applyIncident({}, { ...down, detail: "connection refused" }, T0);
+    const [signal] = toIncidentSignals(state, new Date(later(5)), { ttlHours: 24 });
+
+    expect(signal?.title).toBe("API production · fora há 5min · connection refused");
+  });
+
+  test("shows the latest cause when the outage is reported again", () => {
+    const opened = applyIncident({}, { ...down, detail: "timeout" }, T0);
+    const repeated = applyIncident(opened, { ...down, detail: "HTTP 502" }, later(5));
+
+    expect(repeated["api-prod"]?.detail).toBe("HTTP 502");
+  });
 });

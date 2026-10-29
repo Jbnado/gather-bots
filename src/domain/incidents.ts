@@ -7,11 +7,15 @@ export type IncidentReport = {
   status: "down" | "up";
   title: string;
   url?: string | undefined;
+  /** Why the monitor thinks it is down, when it says — "timeout" and "HTTP 502" call for different people. */
+  detail?: string | undefined;
 };
 
 export type OpenIncident = {
   title: string;
   url?: string;
+  /** The latest cause reported; unlike `since`, a repeat replaces it, since the cause can change mid-outage. */
+  detail?: string;
   /** When the outage was first reported; repeats do not move it. */
   since: number;
   /** Last time the monitor said anything about this check — what the TTL measures. */
@@ -43,6 +47,7 @@ export function applyIncident(
   next[report.id] = {
     title: report.title,
     ...(report.url === undefined ? {} : { url: report.url }),
+    ...(report.detail === undefined ? {} : { detail: report.detail }),
     since: existing?.since ?? now,
     lastSeen: now,
   };
@@ -81,7 +86,13 @@ export function toIncidentSignals(
       id: `incident:${id}`,
       source: "uptime" as const,
       kind: "incident" as const,
-      title: `${incident.title} · fora há ${humanDuration(now.getTime() - incident.since)}`,
+      // Surfaces only render a line of text per entry, so the cause rides on the title; the
+      // feed truncates, which is why it goes last.
+      title: [
+        incident.title,
+        `fora há ${humanDuration(now.getTime() - incident.since)}`,
+        ...(incident.detail === undefined ? [] : [incident.detail]),
+      ].join(" · "),
       ...(incident.url === undefined ? {} : { url: incident.url }),
       state: "failed" as const,
       // An uptime monitor watches production by definition; nobody pages on staging being down.

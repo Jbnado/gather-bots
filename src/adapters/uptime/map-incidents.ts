@@ -84,3 +84,49 @@ export function fromUptimeRobot(body: Record<string, unknown>): IncidentReport[]
     },
   ];
 }
+
+/** Only web addresses become links: TCP, DNS and ping targets are host names nobody can open. */
+function webAddress(value: unknown): string | undefined {
+  const target = text(value);
+  return target !== undefined && /^https?:\/\//i.test(target) ? target : undefined;
+}
+
+/**
+ * upwatch's webhook channel, unmapped: the standard envelope it sends when no body template is
+ * configured. `group` is the monitor's group path ("RPA/prod"), empty when it has none.
+ */
+export function fromUpwatch(body: Record<string, unknown>): IncidentReport[] {
+  const monitorId = body["monitor_id"];
+  // A number on purpose: upwatch sends it as one, and accepting strings too would let "42" and
+  // 42 drift into two ids for the same monitor if the shape ever changed on either side.
+  if (typeof monitorId !== "number" || !Number.isFinite(monitorId)) {
+    throw new Error("missing monitor_id");
+  }
+  const id = `upwatch:${monitorId}`;
+
+  const status = text(body["status"]);
+
+  // Degraded still answers, and unknown is the absence of a result — neither is an outage, for
+  // the same reason UptimeRobot's SSL warning is not one.
+  if (status === "degraded" || status === "unknown") return [];
+  if (status !== "down" && status !== "up") {
+    throw new Error(
+      `status must be "down", "up", "degraded" or "unknown", got ${JSON.stringify(body["status"])}`,
+    );
+  }
+
+  // Monitors tend to be called "api" or "front" inside a group; without the group the title
+  // would not say which system is down.
+  const monitor = text(body["monitor"]) ?? id;
+  const group = text(body["group"]);
+
+  return [
+    {
+      id,
+      status,
+      title: group === undefined ? monitor : `${group} · ${monitor}`,
+      url: webAddress(body["target"]),
+      detail: text(body["message"]),
+    },
+  ];
+}

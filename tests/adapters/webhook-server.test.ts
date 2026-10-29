@@ -90,6 +90,19 @@ describe("createWebhookServer", () => {
     expect(received[0]).toMatchObject({ id: "42", status: "down", title: "Checkout" });
   });
 
+  test("routes the upwatch path through the upwatch mapper", async () => {
+    const res = await post("/incidents/upwatch", {
+      monitor: "api",
+      monitor_id: 7,
+      status: "down",
+      message: "timeout",
+      group: "RPA/prod",
+    });
+
+    expect(res.status).toBe(202);
+    expect(received[0]).toMatchObject({ id: "upwatch:7", status: "down", title: "RPA/prod · api" });
+  });
+
   // A monitor with a broken template should get a clear 400, not a 500 that looks like our fault.
   test("answers 400 for a payload it cannot read", async () => {
     const res = await post("/incidents", { status: "down" });
