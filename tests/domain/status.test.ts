@@ -156,4 +156,27 @@ describe("reduceStatus", () => {
     expect(state.state).toBe("alert");
     expect(state.activity.map((a) => a.id)).toEqual(["build:998", "gcal:b21"]);
   });
+
+  // The uptime source answering with nothing open is evidence that everything it watches is up,
+  // so the face can smile. "on" is the smiling state — the same one an all-green pipeline gets.
+  test("smiles when only the uptime source answered and nothing is down", () => {
+    expect(reduceStatus([], NOW, new Set(["uptime"])).state).toBe("on");
+  });
+
+  test("still alerts for an outage reported by the uptime source alone", () => {
+    const state = reduceStatus(
+      [signal("incident", { source: "uptime", state: "failed", environment: "prod" })],
+      NOW,
+      new Set(["uptime"]),
+    );
+
+    expect(state.state).toBe("alert");
+  });
+
+  // A failing uptime source is absent from the reporting set: its silence is not evidence, and
+  // the face must not smile on the strength of it.
+  test("stays off when the uptime source did not answer", () => {
+    expect(reduceStatus([], NOW, new Set(["azdo-prs"])).state).toBe("off");
+  });
 });
+

@@ -57,7 +57,16 @@ function rank(signal: Signal, now: Date): number {
   return 4;
 }
 
-export function reduceStatus(signals: readonly Signal[], now: Date): StatusState {
+/**
+ * `reporting` holds the sources that answered this tick. Only the uptime source matters here: it
+ * answering with nothing open is evidence that what it watches is up, which lets the face smile
+ * with no other signal around.
+ */
+export function reduceStatus(
+  signals: readonly Signal[],
+  now: Date,
+  reporting: ReadonlySet<string> = new Set(),
+): StatusState {
   const relevant = signals.filter((s) => RUNS_WITHOUT_ME.has(s.kind));
   const events = relevant.filter((s) => s.kind === "calendar_event");
 
@@ -72,7 +81,7 @@ export function reduceStatus(signals: readonly Signal[], now: Date): StatusState
       ...(s.url === undefined ? {} : { url: s.url }),
     }));
 
-  return { state: level(relevant, events, now), activity };
+  return { state: level(relevant, events, now, reporting.has("uptime")), activity };
 }
 
 /**
@@ -82,8 +91,16 @@ export function reduceStatus(signals: readonly Signal[], now: Date): StatusState
  * meeting", which resolves on its own while a broken build does not. A failure with no declared
  * environment counts as prod — the noisy direction is the safe one.
  */
-function level(relevant: readonly Signal[], events: readonly Signal[], now: Date): StatusLevel {
-  if (relevant.length === 0) return "off";
+function level(
+  relevant: readonly Signal[],
+  events: readonly Signal[],
+  now: Date,
+  uptimeAnswered: boolean,
+): StatusLevel {
+  // "on" is the smiling face, and smiling needs evidence: with nothing relevant it takes the
+  // uptime source having answered. Without it — not configured, or failing this tick — silence
+  // is just silence.
+  if (relevant.length === 0) return uptimeAnswered ? "on" : "off";
 
   const failed = relevant.filter((s) => s.state === "failed");
 

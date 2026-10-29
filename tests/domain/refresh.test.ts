@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { refresh, type SurfaceTarget } from "../../src/domain/refresh.js";
 import { reduceInbox } from "../../src/domain/surfaces/inbox.js";
+import { findSurface } from "../../src/objects/registry.js";
 import { FakeSmartObject, FakeSource, InMemoryStateStore } from "../support/fakes.js";
 import { signal } from "../support/signals.js";
 
@@ -140,6 +141,29 @@ describe("refresh", () => {
     });
 
     expect([...(seen ?? [])]).toEqual(["uptime"]);
+  });
+
+  // End to end through the real surface: an uptime source that answers with nothing open makes
+  // the status monitor smile, and one that fails leaves it off.
+  test("the activity monitor smiles only while the uptime source answers", async () => {
+    const surface = findSurface("activity-monitor");
+    if (surface === undefined) throw new Error("activity-monitor surface missing");
+
+    async function stateWith(uptime: FakeSource) {
+      const object = new FakeSmartObject("status");
+      await refresh({
+        sources: [uptime, new FakeSource("azdo-prs", [])],
+        targets: [{ key: "status", object, snapshotOf: surface!.snapshotOf }],
+        store: new InMemoryStateStore(),
+        now: NOW,
+      });
+      return object.applied.find((c) => c.type === "status.set")?.data;
+    }
+
+    expect(await stateWith(new FakeSource("uptime", []))).toEqual({ state: "on" });
+    expect(await stateWith(new FakeSource("uptime", [], new Error("down")))).toEqual({
+      state: "off",
+    });
   });
 });
 

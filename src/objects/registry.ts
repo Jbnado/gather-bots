@@ -38,8 +38,8 @@ export const SURFACES: readonly SurfaceDefinition[] = [
     id: "activity-monitor",
     label: "what is running without me",
     preset: "status",
-    snapshotOf: (signals, now) => {
-      const state = reduceStatus(signals, now);
+    snapshotOf: (signals, now, reporting) => {
+      const state = reduceStatus(signals, now, reporting);
       return { status: state.state, activity: state.activity };
     },
   },
